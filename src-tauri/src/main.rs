@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    tranform_images_lib::run()
+    transform_images_lib::run()
 }

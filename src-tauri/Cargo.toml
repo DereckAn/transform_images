@@ -24,8 +24,7 @@
   serde_json = "1.0"
 
   # Image Processing
-  image = { version = "0.25", default-features = false, features =
-  ["png", "jpeg"] }
+  image = { version = '0.25', default-features = false, features = ['png', 'jpeg'] }
   oxipng = { version = "9.1", default-features = false }
 
   # Async Runtime
@@ -46,9 +45,10 @@
 
   [dev-dependencies]
   mockall = "0.13"
-  criterion = "0.5"
   tempfile = "3.12"
+  # criterion = "0.5"  # Comentado por ahora, lo usaremos en fases posteriores
 
-  [[bench]]
-  name = "image_processing"
-  harness = false
+  # [[bench]]
+  # name = "image_processing"
+  # harness = false
+  # Benchmarks se agregarán en fases posteriores para medir performance

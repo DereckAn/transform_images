@@ -1,14 +1,22 @@
-import { invoke } from "@tauri-apps/api/core";
+import { ImageService } from "./app/services/ImageService";
+import { AppState } from "./app/state/AppState";
+
+// Initialize services
+const imageService = new ImageService();
+const appState = new AppState();
 
 let greetInputEl: HTMLInputElement | null;
 let greetMsgEl: HTMLElement | null;
 
 async function greet() {
   if (greetMsgEl && greetInputEl) {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsgEl.textContent = await invoke("greet", {
-      name: greetInputEl.value,
-    });
+    try {
+      const message = await imageService.greet(greetInputEl.value);
+      greetMsgEl.textContent = message;
+      console.log("App state initialized:", appState);
+    } catch (error) {
+      greetMsgEl.textContent = `Error: ${error}`;
+    }
   }
 }
 
@@ -19,4 +27,7 @@ window.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     greet();
   });
+
+  console.log("Transform Images App initialized!");
+  console.log("Architecture: Clean + Hexagonal");
 });
