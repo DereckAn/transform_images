@@ -13,6 +13,7 @@ export interface OptimizationOptions {
   outputFormat?: string;
   outputDirectory: string;
   preserveMetadata: boolean;
+  overwriteExisting: boolean;
 }
 
 export interface TransformationOptions {
@@ -20,6 +21,7 @@ export interface TransformationOptions {
     width: number;
     height: number;
     preserveAspectRatio: boolean;
+    filter?: string;
   };
   rotate?: number;
   flipHorizontal: boolean;
@@ -32,10 +34,13 @@ export interface ProcessedImage {
   originalSize: number;
   outputSize: number;
   compressionRatio: number;
+  success: boolean;
+  errorMessage?: string;
 }
 
 export interface ProgressPayload {
   current: number;
   total: number;
   currentFile: string;
+  percentage: number;
 }

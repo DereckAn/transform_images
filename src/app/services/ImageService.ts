@@ -5,7 +5,20 @@ import type {
   OptimizationOptions,
   ProcessedImage,
   ProgressPayload,
+  TransformationOptions,
 } from "../../models/types";
+
+export interface BatchProcessRequest {
+  imagePaths: string[];
+  optimizationOptions: OptimizationOptions;
+  transformationOptions?: TransformationOptions;
+}
+
+export interface ProcessingStats {
+  totalProcessed: number;
+  totalSavedBytes: number;
+  averageSavings: number;
+}
 
 export class ImageService {
   /**
@@ -16,35 +29,85 @@ export class ImageService {
   }
 
   /**
-   * Optimize images
-   * TODO: Implement in Phase 4
+   * Load single image metadata
    */
-  async optimizeImages(
-    images: ImageInfo[],
-    options: OptimizationOptions
-  ): Promise<ProcessedImage[]> {
-    return invoke("optimize_images", { images, options });
+  async loadImageInfo(path: string): Promise<ImageInfo> {
+    return invoke("load_image_info", { path });
   }
 
   /**
-   * Cancel ongoing operation
-   * TODO: Implement in Phase 4
+   * Load multiple images metadata
    */
-  async cancelOperation(): Promise<void> {
-    return invoke("cancel_operation");
+  async loadImagesInfo(paths: string[]): Promise<ImageInfo[]> {
+    return invoke("load_images_info", { paths });
+  }
+
+  /**
+   * Process images with optimization and optional transformations
+   */
+  async processImages(request: BatchProcessRequest): Promise<ProcessedImage[]> {
+    return invoke("process_images", { request });
+  }
+
+  /**
+   * Cancel ongoing processing operation
+   */
+  async cancelProcessing(): Promise<void> {
+    return invoke("cancel_processing");
+  }
+
+  /**
+   * Get current processing status
+   */
+  async getProcessingStatus(): Promise<string> {
+    return invoke("get_processing_status");
+  }
+
+  /**
+   * Check if processing is running
+   */
+  async isProcessing(): Promise<boolean> {
+    return invoke("is_processing");
+  }
+
+  /**
+   * Get processing statistics
+   */
+  async getStats(): Promise<ProcessingStats> {
+    return invoke("get_stats");
+  }
+
+  /**
+   * Reset processing statistics
+   */
+  async resetStats(): Promise<void> {
+    return invoke("reset_stats");
+  }
+
+  /**
+   * Get optimal thread count
+   */
+  async getOptimalThreads(): Promise<number> {
+    return invoke("get_optimal_threads");
   }
 
   /**
    * Listen to progress events
    */
   onProgress(
-    callback: (current: number, total: number, file: string) => void
+    callback: (
+      current: number,
+      total: number,
+      file: string,
+      percentage: number
+    ) => void
   ): Promise<UnlistenFn> {
-    return listen<ProgressPayload>("progress", (event) => {
+    return listen<ProgressPayload>("processing-progress", (event) => {
       callback(
         event.payload.current,
         event.payload.total,
-        event.payload.currentFile
+        event.payload.currentFile,
+        event.payload.percentage
       );
     });
   }
