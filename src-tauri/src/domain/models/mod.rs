@@ -1,2 +1,7 @@
-// Domain models will be added in Phase 1
-// TODO: Add Image, Transformation, Settings models
+mod image;
+mod settings;
+mod transformation;
+
+pub use image::{Image, ImageMetadata};
+pub use settings::ProcessingSettings;
+pub use transformation::{ResizeFilter, ResizeTransformation, Rotation, Transformation};

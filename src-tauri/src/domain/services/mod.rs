@@ -1,2 +1,3 @@
-// Domain services (interfaces/traits) will be added in Phase 1
-  // TODO: Add ImageProcessor trait
+mod image_processor;
+
+pub use image_processor::ImageProcessor;
