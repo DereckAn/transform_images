@@ -1,4 +1,5 @@
 pub mod optimizers;
 pub mod transformers;
+mod processor_impl;
 
-// Processor implementation will be added in Phase 2
+pub use processor_impl::ImageProcessorImpl;

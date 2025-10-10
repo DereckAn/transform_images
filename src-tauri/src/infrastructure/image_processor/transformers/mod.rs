@@ -1,2 +1,5 @@
-// Transformers will be added in Phase 6
-  // TODO: Add Resizer, Rotator
+mod resizer;
+mod rotator;
+
+pub use resizer::Resizer;
+pub use rotator::Rotator;

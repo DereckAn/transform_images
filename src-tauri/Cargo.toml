@@ -26,6 +26,7 @@
   # Image Processing
   image = { version = '0.25', default-features = false, features = ['png', 'jpeg'] }
   oxipng = { version = "9.1", default-features = false }
+  mozjpeg = "0.10"
 
   # Async Runtime
   tokio = { version = "1.40", features = ["full"] }
