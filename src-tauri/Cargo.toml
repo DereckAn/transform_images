@@ -27,6 +27,7 @@
   image = { version = '0.25', default-features = false, features = ['png', 'jpeg', 'webp', 'gif'] }
   oxipng = { version = "9.1", default-features = false }
   mozjpeg = "0.10"
+  img-parts = "0.3"
   
   # Usar versión local parcheada de libraw-sys (sin enlace automático de stdc++)
   libraw-sys = { path = "vendor/libraw-sys" }
