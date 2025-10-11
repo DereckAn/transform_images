@@ -221,6 +221,52 @@ body {
   accent-color: var(--primary);
 }
 
+/* Transformations Panel */
+.transformations-panel {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  padding: var(--spacing-lg);
+}
+
+.section-header-collapsible {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.section-header-collapsible h3 {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+
+.transformations-content {
+  margin-top: var(--spacing-md);
+}
+
+.transformations-content input[type="number"] {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: inherit;
+  width: 100%;
+}
+
+.transformations-content input[type="number"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.transformations-content input[type="number"]::placeholder {
+  color: var(--text-muted);
+}
+
 /* Images Container */
 .images-container {
   background: var(--bg-primary);

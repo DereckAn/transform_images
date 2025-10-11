@@ -10,6 +10,7 @@ use crate::domain::{
 use crate::infrastructure::error::{InfraError, InfraResult};
 use crate::infrastructure::image_processor::optimizers::{JpegOptimizer, PngOptimizer};
 use crate::infrastructure::image_processor::transformers::{Resizer, Rotator};
+use crate::infrastructure::image_processor::RawProcessor;
 
 /// Main image processor implementation
 pub struct ImageProcessorImpl {
@@ -17,6 +18,7 @@ pub struct ImageProcessorImpl {
     jpeg_optimizer: JpegOptimizer,
     resizer: Resizer,
     rotator: Rotator,
+    raw_processor: RawProcessor,
 }
 
 impl ImageProcessorImpl {
@@ -26,11 +28,22 @@ impl ImageProcessorImpl {
             jpeg_optimizer: JpegOptimizer::new(),
             resizer: Resizer::new(),
             rotator: Rotator::new(),
+            raw_processor: RawProcessor::new(),
         }
     }
 
     /// Load DynamicImage from file
     fn load_dynamic_image(&self, path: &Path) -> InfraResult<DynamicImage> {
+        // Check if it's a RAW file
+        if let Some(ext) = path.extension() {
+            let ext_str = ext.to_string_lossy().to_string();
+            if RawProcessor::is_raw_format(&ext_str) {
+                // Use RAW processor
+                return self.raw_processor.process_raw(path);
+            }
+        }
+
+        // Use standard image decoder for other formats
         image::open(path).map_err(|e| InfraError::ImageReadError(e.to_string()))
     }
 
@@ -41,6 +54,7 @@ impl ImageProcessorImpl {
             ImageFormat::Jpeg => ImageCrateFormat::Jpeg,
             ImageFormat::Webp => ImageCrateFormat::WebP,
             ImageFormat::Gif => ImageCrateFormat::Gif,
+            ImageFormat::Raw => ImageCrateFormat::Jpeg, // RAW se convierte a JPEG por defecto
         }
     }
 
@@ -62,8 +76,9 @@ impl ImageProcessorImpl {
                 // Luego optimizar con oxipng
                 self.png_optimizer.optimize(&bytes, settings.quality())
             }
-            ImageFormat::Jpeg => {
+            ImageFormat::Jpeg | ImageFormat::Raw => {
                 // Optimizar directamente con mozjpeg
+                // RAW siempre se convierte a JPEG (formato de solo lectura)
                 self.jpeg_optimizer
                     .optimize_from_dynamic_image(img, settings.quality())
             }
@@ -113,27 +128,40 @@ impl ImageProcessor for ImageProcessorImpl {
             ));
         }
 
-        // ✅ OPTIMIZACIÓN: Leer SOLO metadata sin decodificar la imagen completa
-        // Esto es MUCHO más rápido que decodificar toda la imagen
-        let reader = image::ImageReader::open(path)
-            .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
+        // Detectar formato primero
+        let format =
+            ImageFormat::from_extension(path.extension().and_then(|s| s.to_str()).unwrap_or(""))?;
 
-        // Obtener dimensiones SIN decodificar
-        let dimensions_result = reader.into_dimensions()
-            .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
-        let (width, height) = dimensions_result;
-        let dimensions = Dimensions::new(width, height)?;
+        // Obtener dimensiones según el tipo de archivo
+        let dimensions = if format.is_raw() {
+            // Para archivos RAW: decodificar para obtener dimensiones
+            // No hay forma de obtener dimensiones sin decodificar en RAW
+            let dynamic_img = self
+                .raw_processor
+                .process_raw(path)
+                .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
+
+            let (width, height) = (dynamic_img.width(), dynamic_img.height());
+            Dimensions::new(width, height)?
+        } else {
+            // Para formatos estándar: OPTIMIZACIÓN - leer SOLO metadata sin decodificar
+            // Esto es MUCHO más rápido que decodificar toda la imagen
+            let reader = image::ImageReader::open(path)
+                .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
+
+            // Obtener dimensiones SIN decodificar
+            let dimensions_result = reader.into_dimensions()
+                .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
+            let (width, height) = dimensions_result;
+            Dimensions::new(width, height)?
+        };
 
         // Obtener metadata del archivo (tamaño)
         let metadata_fs =
             fs::metadata(path).map_err(|e| DomainError::InvalidFilePath(e.to_string()))?;
         let size_bytes = metadata_fs.len();
 
-        // Detectar formato
-        let format =
-            ImageFormat::from_extension(path.extension().and_then(|s| s.to_str()).unwrap_or(""))?;
-
-        // Crear Image (solo metadata, no la imagen decodificada)
+        // Crear Image (solo metadata, no la imagen decodificada para formatos estándar)
         let image = Image::new(
             path.to_path_buf(),
             format,

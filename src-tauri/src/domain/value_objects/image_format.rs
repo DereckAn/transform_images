@@ -10,6 +10,7 @@ pub enum ImageFormat {
     Jpeg,
     Webp,
     Gif,
+    Raw, // RAW formats (ARW, CR2, NEF, DNG, etc.) - read-only, convert to output format
     // Formatos futuros (Fase post-MVP)
     // Tiff,
     // Heic,
@@ -24,6 +25,7 @@ impl ImageFormat {
             ImageFormat::Jpeg => "jpg",
             ImageFormat::Webp => "webp",
             ImageFormat::Gif => "gif",
+            ImageFormat::Raw => "jpg", // RAW se convierte a JPG por defecto
         }
     }
 
@@ -34,6 +36,7 @@ impl ImageFormat {
             ImageFormat::Jpeg => "image/jpeg",
             ImageFormat::Webp => "image/webp",
             ImageFormat::Gif => "image/gif",
+            ImageFormat::Raw => "image/x-raw", // MIME genérico para RAW
         }
     }
 
@@ -50,6 +53,11 @@ impl ImageFormat {
         matches!(self, ImageFormat::Jpeg | ImageFormat::Webp)
     }
 
+    /// Check if format is a RAW format
+    pub fn is_raw(&self) -> bool {
+        matches!(self, ImageFormat::Raw)
+    }
+
     /// Parse from file extension
     pub fn from_extension(ext: &str) -> DomainResult<Self> {
         match ext.to_lowercase().as_str() {
@@ -57,6 +65,11 @@ impl ImageFormat {
             "jpg" | "jpeg" => Ok(ImageFormat::Jpeg),
             "webp" => Ok(ImageFormat::Webp),
             "gif" => Ok(ImageFormat::Gif),
+            // RAW formats
+            "arw" | "cr2" | "cr3" | "nef" | "nrw" | "dng" | "raf" | "orf"
+            | "rw2" | "pef" | "srw" | "x3f" | "raw" | "rwl" | "mrw" | "erf"
+            | "3fr" | "ari" | "srf" | "sr2" | "bay" | "crw" | "iiq"
+            | "k25" | "kdc" | "mef" | "mos" | "r3d" => Ok(ImageFormat::Raw),
             _ => Err(DomainError::InvalidImageFormat(ext.to_string())),
         }
     }

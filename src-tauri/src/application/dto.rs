@@ -8,6 +8,7 @@ use crate::infrastructure::image_processor::ProcessingResult;
 /// Data Transfer Objects for frontend-backend communication
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ImageDto {
     pub path: String,
     pub format: String,
@@ -29,6 +30,7 @@ impl From<&Image> for ImageDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OptimizationOptionsDto {
     pub quality: u8,
     pub output_format: Option<String>,
@@ -60,6 +62,7 @@ impl OptimizationOptionsDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransformationOptionsDto {
     pub resize: Option<ResizeOptionsDto>,
     pub rotate: Option<i32>,
@@ -98,6 +101,7 @@ impl TransformationOptionsDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ResizeOptionsDto {
     pub width: u32,
     pub height: u32,
@@ -136,6 +140,7 @@ impl ResizeOptionsDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProcessedImageDto {
     pub original_path: String,
     pub output_path: String,
@@ -161,6 +166,7 @@ impl From<ProcessingResult> for ProcessedImageDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProgressPayload {
     pub current: usize,
     pub total: usize,
@@ -186,6 +192,7 @@ impl ProgressPayload {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BatchProcessRequest {
     pub image_paths: Vec<String>,
     pub optimization_options: OptimizationOptionsDto,
@@ -193,6 +200,7 @@ pub struct BatchProcessRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProcessingStatsDto {
     pub total_processed: usize,
     pub total_saved_bytes: u64,

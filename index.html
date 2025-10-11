@@ -80,7 +80,82 @@
           </div>
         </section>
 
-        <!-- ✅ NUEVO: Contenedor único que alterna entre Drop Zone 
+        <!-- Transformations Panel -->
+        <section class="transformations-panel">
+          <div class="section-header-collapsible">
+            <h3>Transformations (Optional)</h3>
+            <button class="btn btn-small" id="toggle-transformations">
+              Show
+            </button>
+          </div>
+
+          <div class="transformations-content" id="transformations-content" style="display: none;">
+            <div class="settings-grid">
+              <!-- Resize -->
+              <div class="setting-group">
+                <label for="resize-width">Width (px)</label>
+                <input type="number" id="resize-width" min="1" placeholder="Original" />
+              </div>
+
+              <div class="setting-group">
+                <label for="resize-height">Height (px)</label>
+                <input type="number" id="resize-height" min="1" placeholder="Original" />
+              </div>
+
+              <div class="setting-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="preserve-aspect-ratio" checked />
+                  <span>Preserve Aspect Ratio</span>
+                </label>
+              </div>
+
+              <div class="setting-group">
+                <label for="resize-filter">Resize Filter</label>
+                <select id="resize-filter">
+                  <option value="Lanczos3">Lanczos3 (Best Quality)</option>
+                  <option value="CatmullRom">CatmullRom (Good)</option>
+                  <option value="Gaussian">Gaussian</option>
+                  <option value="Triangle">Triangle (Fast)</option>
+                  <option value="Nearest">Nearest (Fastest)</option>
+                </select>
+              </div>
+
+              <!-- Rotation -->
+              <div class="setting-group">
+                <label for="rotation">Rotation</label>
+                <select id="rotation">
+                  <option value="0">No Rotation</option>
+                  <option value="90">90° Clockwise</option>
+                  <option value="180">180°</option>
+                  <option value="270">270° Clockwise</option>
+                </select>
+              </div>
+
+              <!-- Flips -->
+              <div class="setting-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="flip-horizontal" />
+                  <span>Flip Horizontal</span>
+                </label>
+              </div>
+
+              <div class="setting-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="flip-vertical" />
+                  <span>Flip Vertical</span>
+                </label>
+              </div>
+
+              <div class="setting-group">
+                <button class="btn btn-secondary" id="reset-transformations">
+                  Reset All Transformations
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ✅ NUEVO: Contenedor único que alterna entre Drop Zone
   e Images List -->
         <section class="images-container">
           <!-- Drop Zone (se muestra cuando no hay imágenes) -->

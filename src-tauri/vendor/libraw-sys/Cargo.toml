@@ -1,0 +1,14 @@
+[package]
+name = "libraw-sys"
+version = "0.1.1"
+edition = "2018"
+
+[lib]
+name = "libraw_sys"
+
+[dependencies]
+libc = "0.2"
+
+[build-dependencies]
+# NO usamos pkg-config ni gcc para evitar el enlace automático de stdc++
+# El linking lo maneja el build.rs del proyecto principal

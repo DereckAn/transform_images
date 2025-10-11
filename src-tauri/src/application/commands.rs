@@ -31,19 +31,26 @@ pub async fn load_image_info(path: String) -> Result<ImageDto, String> {
 pub async fn load_images_info(paths: Vec<String>) -> Result<Vec<ImageDto>, String> {
     let processor = ImageProcessorImpl::new();
     let mut images = Vec::new();
+    let mut errors = Vec::new();
 
     for path in paths {
         match processor.load_image(std::path::Path::new(&path)) {
             Ok(image) => images.push(ImageDto::from(&image)),
             Err(e) => {
-                eprintln!("Failed to load {}: {}", path, e);
+                let error_msg = format!("Failed to load {}: {}", path, e);
+                eprintln!("{}", error_msg);
+                errors.push(error_msg);
                 // Continuar con las demás imágenes
             }
         }
     }
 
     if images.is_empty() {
-        return Err("No valid images found".to_string());
+        if errors.is_empty() {
+            return Err("No valid images found".to_string());
+        } else {
+            return Err(format!("No valid images found. Errors:\n{}", errors.join("\n")));
+        }
     }
 
     Ok(images)

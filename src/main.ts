@@ -36,6 +36,18 @@ let resultsStats: HTMLElement;
 let resultsList: HTMLElement;
 let threadCount: HTMLElement;
 
+// Transformation elements
+let toggleTransformationsBtn: HTMLButtonElement;
+let transformationsContent: HTMLElement;
+let resizeWidthInput: HTMLInputElement;
+let resizeHeightInput: HTMLInputElement;
+let preserveAspectRatioCheck: HTMLInputElement;
+let resizeFilterSelect: HTMLSelectElement;
+let rotationSelect: HTMLSelectElement;
+let flipHorizontalCheck: HTMLInputElement;
+let flipVerticalCheck: HTMLInputElement;
+let resetTransformationsBtn: HTMLButtonElement;
+
 async function initialize() {
   // Get DOM elements
   dropZone = document.getElementById("drop-zone")!;
@@ -70,6 +82,18 @@ async function initialize() {
   resultsStats = document.getElementById("results-stats")!;
   resultsList = document.getElementById("results-list")!;
   threadCount = document.getElementById("thread-count")!;
+
+  // Get transformation elements
+  toggleTransformationsBtn = document.getElementById("toggle-transformations") as HTMLButtonElement;
+  transformationsContent = document.getElementById("transformations-content")!;
+  resizeWidthInput = document.getElementById("resize-width") as HTMLInputElement;
+  resizeHeightInput = document.getElementById("resize-height") as HTMLInputElement;
+  preserveAspectRatioCheck = document.getElementById("preserve-aspect-ratio") as HTMLInputElement;
+  resizeFilterSelect = document.getElementById("resize-filter") as HTMLSelectElement;
+  rotationSelect = document.getElementById("rotation") as HTMLSelectElement;
+  flipHorizontalCheck = document.getElementById("flip-horizontal") as HTMLInputElement;
+  flipVerticalCheck = document.getElementById("flip-vertical") as HTMLInputElement;
+  resetTransformationsBtn = document.getElementById("reset-transformations") as HTMLButtonElement;
 
   // Setup event listeners
   setupEventListeners();
@@ -118,6 +142,17 @@ function setupEventListeners() {
   clearBtn.addEventListener("click", handleClearImages);
   processBtn.addEventListener("click", handleProcessImages);
   cancelBtn.addEventListener("click", handleCancelProcessing);
+
+  // Transformations
+  toggleTransformationsBtn.addEventListener("click", handleToggleTransformations);
+  resizeWidthInput.addEventListener("input", handleResizeChange);
+  resizeHeightInput.addEventListener("input", handleResizeChange);
+  preserveAspectRatioCheck.addEventListener("change", handleResizeChange);
+  resizeFilterSelect.addEventListener("change", handleResizeChange);
+  rotationSelect.addEventListener("change", handleRotationChange);
+  flipHorizontalCheck.addEventListener("change", handleFlipChange);
+  flipVerticalCheck.addEventListener("change", handleFlipChange);
+  resetTransformationsBtn.addEventListener("click", handleResetTransformations);
 
   // Progress events
   imageService.onProgress((current, total, file, percentage) => {
@@ -173,7 +208,14 @@ async function handleBrowseClick() {
       filters: [
         {
           name: "Images",
-          extensions: ["png", "jpg", "jpeg", "webp", "gif"],
+          extensions: [
+            "png", "jpg", "jpeg", "webp", "gif",
+            // RAW formats
+            "arw", "cr2", "cr3", "nef", "nrw", "dng", "raf", "orf",
+            "rw2", "pef", "srw", "x3f", "raw", "rwl", "mrw", "erf",
+            "3fr", "ari", "srf", "sr2", "bay", "crw", "iiq",
+            "k25", "kdc", "mef", "mos", "r3d"
+          ],
         },
       ],
     });
@@ -264,6 +306,46 @@ function handleOverwriteExistingChange() {
   appState.setOverwriteExisting(overwriteExistingCheck.checked);
 }
 
+// Transformation handlers
+function handleToggleTransformations() {
+  const isHidden = transformationsContent.style.display === "none";
+  transformationsContent.style.display = isHidden ? "block" : "none";
+  toggleTransformationsBtn.textContent = isHidden ? "Hide" : "Show";
+}
+
+function handleResizeChange() {
+  const width = resizeWidthInput.value ? parseInt(resizeWidthInput.value) : null;
+  const height = resizeHeightInput.value ? parseInt(resizeHeightInput.value) : null;
+  const preserveAspect = preserveAspectRatioCheck.checked;
+  const filter = resizeFilterSelect.value;
+
+  appState.setResize(width, height, preserveAspect, filter);
+}
+
+function handleRotationChange() {
+  const degrees = parseInt(rotationSelect.value);
+  appState.setRotation(degrees);
+}
+
+function handleFlipChange() {
+  appState.setFlipHorizontal(flipHorizontalCheck.checked);
+  appState.setFlipVertical(flipVerticalCheck.checked);
+}
+
+function handleResetTransformations() {
+  // Reset AppState
+  appState.resetTransformations();
+
+  // Reset UI
+  resizeWidthInput.value = "";
+  resizeHeightInput.value = "";
+  preserveAspectRatioCheck.checked = true;
+  resizeFilterSelect.value = "Lanczos3";
+  rotationSelect.value = "0";
+  flipHorizontalCheck.checked = false;
+  flipVerticalCheck.checked = false;
+}
+
 function handleClearImages() {
   appState.clearImages();
   updateUI();
@@ -284,8 +366,12 @@ async function handleProcessImages() {
     const request = {
       imagePaths: appState.images.map((img) => img.path),
       optimizationOptions: appState.options,
-      transformationOptions: undefined, // Transformations en Fase 6
+      transformationOptions: appState.hasTransformations()
+        ? appState.transformations
+        : undefined,
     };
+
+    console.log("Processing with transformations:", request.transformationOptions);
 
     const results = await imageService.processImages(request);
     displayResults(results);
