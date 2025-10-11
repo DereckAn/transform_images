@@ -44,8 +44,8 @@ impl TaskManager {
     ) -> Result<Vec<ProcessingResult>, String> {
         // Verificar si ya hay una tarea corriendo
         {
-            let status = self.status.read().await;
-            if *status == TaskStatus::Running {
+            let current_status = self.status.read().await;
+            if *current_status == TaskStatus::Running {
                 return Err("A task is already running".to_string());
             }
         }
@@ -58,8 +58,6 @@ impl TaskManager {
         // Clonar referencias para la tarea async
         let batch_processor = Arc::clone(&self.batch_processor);
         let cancel_signal = Arc::clone(&self.cancel_signal);
-        let status = Arc::clone(&self.status);
-        let results = Arc::clone(&self.results);
 
         // Procesar en un thread separado
         let handle = tokio::task::spawn_blocking(move || {

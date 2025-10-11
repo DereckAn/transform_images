@@ -1,8 +1,10 @@
-#![allow(non_camel_case_types,non_snake_case)]
+#![allow(non_camel_case_types, non_snake_case)]
 
 extern crate libc;
 
-use libc::{c_void,c_char,c_uchar,c_short,c_ushort,c_int,c_uint,c_float,c_double,size_t,time_t};
+use libc::{
+    c_char, c_double, c_float, c_int, c_short, c_uchar, c_uint, c_ushort, c_void, size_t, time_t,
+};
 
 #[repr(C)]
 pub struct libraw_data_t {
@@ -385,98 +387,116 @@ pub struct libraw_decoder_info_t {
 }
 
 pub type LibRaw_constructor_flags = c_uint;
-pub const LIBRAW_OPTIONS_NONE:               LibRaw_constructor_flags = 0;
-pub const LIBRAW_OPIONS_NO_MEMERR_CALLBACK:  LibRaw_constructor_flags = 1;
-pub const LIBRAW_OPIONS_NO_DATAERR_CALLBACK: LibRaw_constructor_flags = 1<<1;
+pub const LIBRAW_OPTIONS_NONE: LibRaw_constructor_flags = 0;
+pub const LIBRAW_OPIONS_NO_MEMERR_CALLBACK: LibRaw_constructor_flags = 1;
+pub const LIBRAW_OPIONS_NO_DATAERR_CALLBACK: LibRaw_constructor_flags = 1 << 1;
 
 pub type LibRaw_errors = c_int;
-pub const LIBRAW_SUCCESS:                       LibRaw_errors = 0;
-pub const LIBRAW_UNSPECIFIED_ERROR:             LibRaw_errors = -1;
-pub const LIBRAW_FILE_UNSUPPORTED:              LibRaw_errors = -2;
+pub const LIBRAW_SUCCESS: LibRaw_errors = 0;
+pub const LIBRAW_UNSPECIFIED_ERROR: LibRaw_errors = -1;
+pub const LIBRAW_FILE_UNSUPPORTED: LibRaw_errors = -2;
 pub const LIBRAW_REQUEST_FOR_NONEXISTENT_IMAGE: LibRaw_errors = -3;
-pub const LIBRAW_OUT_OF_ORDER_CALL:             LibRaw_errors = -4;
-pub const LIBRAW_NO_THUMBNAIL:                  LibRaw_errors = -5;
-pub const LIBRAW_UNSUPPORTED_THUMBNAIL:         LibRaw_errors = -6;
-pub const LIBRAW_INPUT_CLOSED:                  LibRaw_errors = -7;
-pub const LIBRAW_INSUFFICIENT_MEMORY:           LibRaw_errors = -100007;
-pub const LIBRAW_DATA_ERROR:                    LibRaw_errors = -100008;
-pub const LIBRAW_IO_ERROR:                      LibRaw_errors = -100009;
-pub const LIBRAW_CANCELLED_BY_CALLBACK:         LibRaw_errors = -100010;
-pub const LIBRAW_BAD_CROP:                      LibRaw_errors = -100011;
+pub const LIBRAW_OUT_OF_ORDER_CALL: LibRaw_errors = -4;
+pub const LIBRAW_NO_THUMBNAIL: LibRaw_errors = -5;
+pub const LIBRAW_UNSUPPORTED_THUMBNAIL: LibRaw_errors = -6;
+pub const LIBRAW_INPUT_CLOSED: LibRaw_errors = -7;
+pub const LIBRAW_INSUFFICIENT_MEMORY: LibRaw_errors = -100007;
+pub const LIBRAW_DATA_ERROR: LibRaw_errors = -100008;
+pub const LIBRAW_IO_ERROR: LibRaw_errors = -100009;
+pub const LIBRAW_CANCELLED_BY_CALLBACK: LibRaw_errors = -100010;
+pub const LIBRAW_BAD_CROP: LibRaw_errors = -100011;
 
 pub type LibRaw_progress = c_int;
-pub const LIBRAW_PROGRESS_START:              LibRaw_progress = 0;
-pub const LIBRAW_PROGRESS_OPEN:               LibRaw_progress = 1<<0;
-pub const LIBRAW_PROGRESS_IDENTIFY:           LibRaw_progress = 1<<1;
-pub const LIBRAW_PROGRESS_SIZE_ADJUST:        LibRaw_progress = 1<<2;
-pub const LIBRAW_PROGRESS_LOAD_RAW:           LibRaw_progress = 1<<3;
-pub const LIBRAW_PROGRESS_RAW2_IMAGE:         LibRaw_progress = 1<<4;
-pub const LIBRAW_PROGRESS_REMOVE_ZEROES:      LibRaw_progress = 1<<5;
-pub const LIBRAW_PROGRESS_BAD_PIXELS:         LibRaw_progress = 1<<6;
-pub const LIBRAW_PROGRESS_DARK_FRAME:         LibRaw_progress = 1<<7;
-pub const LIBRAW_PROGRESS_FOVEON_INTERPOLATE: LibRaw_progress = 1<<8;
-pub const LIBRAW_PROGRESS_SCALE_COLORS:       LibRaw_progress = 1<<9;
-pub const LIBRAW_PROGRESS_PRE_INTERPOLATE:    LibRaw_progress = 1<<10;
-pub const LIBRAW_PROGRESS_INTERPOLATE:        LibRaw_progress = 1<<11;
-pub const LIBRAW_PROGRESS_MIX_GREEN:          LibRaw_progress = 1<<12;
-pub const LIBRAW_PROGRESS_MEDIAN_FILTER:      LibRaw_progress = 1<<13;
-pub const LIBRAW_PROGRESS_HIGHLIGHTS:         LibRaw_progress = 1<<14;
-pub const LIBRAW_PROGRESS_FUJI_ROTATE:        LibRaw_progress = 1<<15;
-pub const LIBRAW_PROGRESS_FLIP:               LibRaw_progress = 1<<16;
-pub const LIBRAW_PROGRESS_APPLY_PROFILE:      LibRaw_progress = 1<<17;
-pub const LIBRAW_PROGRESS_CONVERT_RGB:        LibRaw_progress = 1<<18;
-pub const LIBRAW_PROGRESS_STRETCH:            LibRaw_progress = 1<<19;
-pub const LIBRAW_PROGRESS_STAGE20:            LibRaw_progress = 1<<20;
-pub const LIBRAW_PROGRESS_STAGE21:            LibRaw_progress = 1<<21;
-pub const LIBRAW_PROGRESS_STAGE22:            LibRaw_progress = 1<<22;
-pub const LIBRAW_PROGRESS_STAGE23:            LibRaw_progress = 1<<23;
-pub const LIBRAW_PROGRESS_STAGE24:            LibRaw_progress = 1<<24;
-pub const LIBRAW_PROGRESS_STAGE25:            LibRaw_progress = 1<<25;
-pub const LIBRAW_PROGRESS_STAGE26:            LibRaw_progress = 1<<26;
-pub const LIBRAW_PROGRESS_STAGE27:            LibRaw_progress = 1<<27;
-pub const LIBRAW_PROGRESS_THUMB_LOAD:         LibRaw_progress = 1<<28;
-pub const LIBRAW_PROGRESS_TRESERVED1:         LibRaw_progress = 1<<29;
-pub const LIBRAW_PROGRESS_TRESERVED2:         LibRaw_progress = 1<<30;
-pub const LIBRAW_PROGRESS_TRESERVED3:         LibRaw_progress = 1<<31;
-pub const LIBRAW_PROGRESS_THUMB_MASK:         LibRaw_progress = 0x0fffffff;
+pub const LIBRAW_PROGRESS_START: LibRaw_progress = 0;
+pub const LIBRAW_PROGRESS_OPEN: LibRaw_progress = 1 << 0;
+pub const LIBRAW_PROGRESS_IDENTIFY: LibRaw_progress = 1 << 1;
+pub const LIBRAW_PROGRESS_SIZE_ADJUST: LibRaw_progress = 1 << 2;
+pub const LIBRAW_PROGRESS_LOAD_RAW: LibRaw_progress = 1 << 3;
+pub const LIBRAW_PROGRESS_RAW2_IMAGE: LibRaw_progress = 1 << 4;
+pub const LIBRAW_PROGRESS_REMOVE_ZEROES: LibRaw_progress = 1 << 5;
+pub const LIBRAW_PROGRESS_BAD_PIXELS: LibRaw_progress = 1 << 6;
+pub const LIBRAW_PROGRESS_DARK_FRAME: LibRaw_progress = 1 << 7;
+pub const LIBRAW_PROGRESS_FOVEON_INTERPOLATE: LibRaw_progress = 1 << 8;
+pub const LIBRAW_PROGRESS_SCALE_COLORS: LibRaw_progress = 1 << 9;
+pub const LIBRAW_PROGRESS_PRE_INTERPOLATE: LibRaw_progress = 1 << 10;
+pub const LIBRAW_PROGRESS_INTERPOLATE: LibRaw_progress = 1 << 11;
+pub const LIBRAW_PROGRESS_MIX_GREEN: LibRaw_progress = 1 << 12;
+pub const LIBRAW_PROGRESS_MEDIAN_FILTER: LibRaw_progress = 1 << 13;
+pub const LIBRAW_PROGRESS_HIGHLIGHTS: LibRaw_progress = 1 << 14;
+pub const LIBRAW_PROGRESS_FUJI_ROTATE: LibRaw_progress = 1 << 15;
+pub const LIBRAW_PROGRESS_FLIP: LibRaw_progress = 1 << 16;
+pub const LIBRAW_PROGRESS_APPLY_PROFILE: LibRaw_progress = 1 << 17;
+pub const LIBRAW_PROGRESS_CONVERT_RGB: LibRaw_progress = 1 << 18;
+pub const LIBRAW_PROGRESS_STRETCH: LibRaw_progress = 1 << 19;
+pub const LIBRAW_PROGRESS_STAGE20: LibRaw_progress = 1 << 20;
+pub const LIBRAW_PROGRESS_STAGE21: LibRaw_progress = 1 << 21;
+pub const LIBRAW_PROGRESS_STAGE22: LibRaw_progress = 1 << 22;
+pub const LIBRAW_PROGRESS_STAGE23: LibRaw_progress = 1 << 23;
+pub const LIBRAW_PROGRESS_STAGE24: LibRaw_progress = 1 << 24;
+pub const LIBRAW_PROGRESS_STAGE25: LibRaw_progress = 1 << 25;
+pub const LIBRAW_PROGRESS_STAGE26: LibRaw_progress = 1 << 26;
+pub const LIBRAW_PROGRESS_STAGE27: LibRaw_progress = 1 << 27;
+pub const LIBRAW_PROGRESS_THUMB_LOAD: LibRaw_progress = 1 << 28;
+pub const LIBRAW_PROGRESS_TRESERVED1: LibRaw_progress = 1 << 29;
+pub const LIBRAW_PROGRESS_TRESERVED2: LibRaw_progress = 1 << 30;
+pub const LIBRAW_PROGRESS_TRESERVED3: LibRaw_progress = 1 << 31;
+pub const LIBRAW_PROGRESS_THUMB_MASK: LibRaw_progress = 0x0fffffff;
 
 pub type LibRaw_decoder_flags = c_uint;
-pub const LIBRAW_DECODER_USEBAYER2:   LibRaw_decoder_flags = 1<<3;
-pub const LIBRAW_DECODER_HASCURVE:    LibRaw_decoder_flags = 1<<4;
-pub const LIBRAW_DECODER_SONYARW2:    LibRaw_decoder_flags = 1<<5;
-pub const LIBRAW_DECODER_TRYRAWSPEED: LibRaw_decoder_flags = 1<<6;
-pub const LIBRAW_DECODER_OWNALLOC:    LibRaw_decoder_flags = 1<<7;
-pub const LIBRAW_DECODER_FIXEDMAXC:   LibRaw_decoder_flags = 1<<8;
-pub const LIBRAW_DECODER_NOTSET:      LibRaw_decoder_flags = 1<<15;
+pub const LIBRAW_DECODER_USEBAYER2: LibRaw_decoder_flags = 1 << 3;
+pub const LIBRAW_DECODER_HASCURVE: LibRaw_decoder_flags = 1 << 4;
+pub const LIBRAW_DECODER_SONYARW2: LibRaw_decoder_flags = 1 << 5;
+pub const LIBRAW_DECODER_TRYRAWSPEED: LibRaw_decoder_flags = 1 << 6;
+pub const LIBRAW_DECODER_OWNALLOC: LibRaw_decoder_flags = 1 << 7;
+pub const LIBRAW_DECODER_FIXEDMAXC: LibRaw_decoder_flags = 1 << 8;
+pub const LIBRAW_DECODER_NOTSET: LibRaw_decoder_flags = 1 << 15;
 
 #[repr(C)]
 pub enum LibRaw_thumbnail_formats {
     LIBRAW_THUMBNAIL_UNKNOWN = 0,
-    LIBRAW_THUMBNAIL_JPEG    = 1,
-    LIBRAW_THUMBNAIL_BITMAP  = 2,
-    LIBRAW_THUMBNAIL_LAYER   = 4,
-    LIBRAW_THUMBNAIL_ROLLEI  = 5,
+    LIBRAW_THUMBNAIL_JPEG = 1,
+    LIBRAW_THUMBNAIL_BITMAP = 2,
+    LIBRAW_THUMBNAIL_LAYER = 4,
+    LIBRAW_THUMBNAIL_ROLLEI = 5,
 }
 
-pub const LIBRAW_THUMBNAIL_UNKNOWN: LibRaw_thumbnail_formats = LibRaw_thumbnail_formats::LIBRAW_THUMBNAIL_UNKNOWN;
-pub const LIBRAW_THUMBNAIL_JPEG:    LibRaw_thumbnail_formats = LibRaw_thumbnail_formats::LIBRAW_THUMBNAIL_JPEG;
-pub const LIBRAW_THUMBNAIL_BITMAP:  LibRaw_thumbnail_formats = LibRaw_thumbnail_formats::LIBRAW_THUMBNAIL_BITMAP;
-pub const LIBRAW_THUMBNAIL_LAYER:   LibRaw_thumbnail_formats = LibRaw_thumbnail_formats::LIBRAW_THUMBNAIL_LAYER;
-pub const LIBRAW_THUMBNAIL_ROLLEI:  LibRaw_thumbnail_formats = LibRaw_thumbnail_formats::LIBRAW_THUMBNAIL_ROLLEI;
+pub const LIBRAW_THUMBNAIL_UNKNOWN: LibRaw_thumbnail_formats =
+    LibRaw_thumbnail_formats::LIBRAW_THUMBNAIL_UNKNOWN;
+pub const LIBRAW_THUMBNAIL_JPEG: LibRaw_thumbnail_formats =
+    LibRaw_thumbnail_formats::LIBRAW_THUMBNAIL_JPEG;
+pub const LIBRAW_THUMBNAIL_BITMAP: LibRaw_thumbnail_formats =
+    LibRaw_thumbnail_formats::LIBRAW_THUMBNAIL_BITMAP;
+pub const LIBRAW_THUMBNAIL_LAYER: LibRaw_thumbnail_formats =
+    LibRaw_thumbnail_formats::LIBRAW_THUMBNAIL_LAYER;
+pub const LIBRAW_THUMBNAIL_ROLLEI: LibRaw_thumbnail_formats =
+    LibRaw_thumbnail_formats::LIBRAW_THUMBNAIL_ROLLEI;
 
 #[repr(C)]
 pub enum LibRaw_image_formats {
-    LIBRAW_IMAGE_JPEG   = 1,
+    LIBRAW_IMAGE_JPEG = 1,
     LIBRAW_IMAGE_BITMAP = 2,
 }
 
-pub const LIBRAW_IMAGE_JPEG:   LibRaw_image_formats = LibRaw_image_formats::LIBRAW_IMAGE_JPEG;
+pub const LIBRAW_IMAGE_JPEG: LibRaw_image_formats = LibRaw_image_formats::LIBRAW_IMAGE_JPEG;
 pub const LIBRAW_IMAGE_BITMAP: LibRaw_image_formats = LibRaw_image_formats::LIBRAW_IMAGE_BITMAP;
 
-pub type memory_callback      = extern "C" fn (data: *mut c_void, file: *const c_char, func: *const c_char);
-pub type exif_parser_callback = extern "C" fn (data: *mut c_void, tag: c_int, tag_type: c_int, len: c_int, ord: c_uint, ifp: *mut c_void);
-pub type data_callback        = extern "C" fn (data: *mut c_void, file: *const c_char, offset: c_int);
-pub type progress_callback    = extern "C" fn (data: *mut c_void, stage: LibRaw_progress, iteration: c_int, expected: c_int) -> c_int;
+pub type memory_callback =
+    extern "C" fn(data: *mut c_void, file: *const c_char, func: *const c_char);
+pub type exif_parser_callback = extern "C" fn(
+    data: *mut c_void,
+    tag: c_int,
+    tag_type: c_int,
+    len: c_int,
+    ord: c_uint,
+    ifp: *mut c_void,
+);
+pub type data_callback = extern "C" fn(data: *mut c_void, file: *const c_char, offset: c_int);
+pub type progress_callback = extern "C" fn(
+    data: *mut c_void,
+    stage: LibRaw_progress,
+    iteration: c_int,
+    expected: c_int,
+) -> c_int;
 
 extern "C" {
     pub fn libraw_version() -> *const c_char;
@@ -503,18 +523,40 @@ extern "C" {
     pub fn libraw_recycle_datastream(lr: *mut libraw_data_t);
     pub fn libraw_recycle(lr: *mut libraw_data_t);
 
-    pub fn libraw_set_exifparser_handler(lr: *mut libraw_data_t, cb: exif_parser_callback, data: *mut c_void);
-    pub fn libraw_set_memerror_handler(lr: *mut libraw_data_t, cb: memory_callback, data: *mut c_void);
-    pub fn libraw_set_dataerror_handler(lr: *mut libraw_data_t, cb: data_callback, data: *mut c_void);
-    pub fn libraw_set_progress_handler(lr: *mut libraw_data_t, cb: progress_callback, data: *mut c_void);
+    pub fn libraw_set_exifparser_handler(
+        lr: *mut libraw_data_t,
+        cb: exif_parser_callback,
+        data: *mut c_void,
+    );
+    pub fn libraw_set_memerror_handler(
+        lr: *mut libraw_data_t,
+        cb: memory_callback,
+        data: *mut c_void,
+    );
+    pub fn libraw_set_dataerror_handler(
+        lr: *mut libraw_data_t,
+        cb: data_callback,
+        data: *mut c_void,
+    );
+    pub fn libraw_set_progress_handler(
+        lr: *mut libraw_data_t,
+        cb: progress_callback,
+        data: *mut c_void,
+    );
 
     pub fn libraw_adjust_sizes_info_only(lr: *mut libraw_data_t) -> c_int;
     pub fn libraw_dcraw_ppm_tiff_writer(lr: *mut libraw_data_t, filename: *const c_char) -> c_int;
     pub fn libraw_dcraw_thumb_writer(lr: *mut libraw_data_t, filename: *const c_char) -> c_int;
     pub fn libraw_dcraw_process(lr: *mut libraw_data_t) -> c_int;
 
-    pub fn libraw_dcraw_make_mem_image(lr: *mut libraw_data_t, errc: *mut c_int) -> *mut libraw_processed_image_t;
-    pub fn libraw_dcraw_make_mem_thumb(lr: *mut libraw_data_t, errc: *mut c_int) -> *mut libraw_processed_image_t;
+    pub fn libraw_dcraw_make_mem_image(
+        lr: *mut libraw_data_t,
+        errc: *mut c_int,
+    ) -> *mut libraw_processed_image_t;
+    pub fn libraw_dcraw_make_mem_thumb(
+        lr: *mut libraw_data_t,
+        errc: *mut c_int,
+    ) -> *mut libraw_processed_image_t;
     pub fn libraw_dcraw_clear_mem(p: *mut libraw_processed_image_t);
 
     pub fn libraw_raw2image(lr: *mut libraw_data_t) -> c_int;

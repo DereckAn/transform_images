@@ -1,5 +1,5 @@
 use rayon::prelude::*;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -189,11 +189,9 @@ impl BatchProcessor {
         settings: &ProcessingSettings,
     ) -> DomainResult<PathBuf> {
         let output_format = settings.determine_output_format(image.format());
-        let file_stem = image.file_stem().ok_or_else(|| {
-            DomainError::InvalidFilePath(
-                "No file name".to_string(),
-            )
-        })?;
+        let file_stem = image
+            .file_stem()
+            .ok_or_else(|| DomainError::InvalidFilePath("No file name".to_string()))?;
 
         let output_filename = format!("{}.{}", file_stem, output_format.extension());
         let output_path = settings.output_directory().join(output_filename);

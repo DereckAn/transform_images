@@ -1,4 +1,4 @@
-use image::{DynamicImage, GenericImageView, ImageFormat as ImageCrateFormat};
+use image::{DynamicImage, ImageFormat as ImageCrateFormat};
 use std::fs;
 use std::io::Cursor;
 use std::path::Path;
