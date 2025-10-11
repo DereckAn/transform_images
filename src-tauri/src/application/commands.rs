@@ -6,6 +6,7 @@ use crate::application::dto::{
 };
 use crate::application::state::AppState;
 use crate::domain::{Image, ImageProcessor};
+use crate::infrastructure::file_system::FileHandler;
 use crate::infrastructure::image_processor::{ImageProcessorImpl, ProgressCallback};
 
 /// Test command - greet
@@ -43,6 +44,37 @@ pub async fn load_images_info(paths: Vec<String>) -> Result<Vec<ImageDto>, Strin
 
     if images.is_empty() {
         return Err("No valid images found".to_string());
+    }
+
+    Ok(images)
+}
+
+/// Discover and load images from a directory
+#[tauri::command]
+pub async fn load_images_from_folder(folder_path: String) -> Result<Vec<ImageDto>, String> {
+    let processor = ImageProcessorImpl::new();
+
+    // Discover all image files in the folder
+    let image_paths = FileHandler::discover_images(std::path::Path::new(&folder_path));
+
+    if image_paths.is_empty() {
+        return Err("No image files found in the selected folder".to_string());
+    }
+
+    let mut images = Vec::new();
+
+    for path in image_paths {
+        match processor.load_image(&path) {
+            Ok(image) => images.push(ImageDto::from(&image)),
+            Err(e) => {
+                eprintln!("Failed to load {:?}: {}", path, e);
+                // Continue with other images
+            }
+        }
+    }
+
+    if images.is_empty() {
+        return Err("No valid images found in the folder".to_string());
     }
 
     Ok(images)

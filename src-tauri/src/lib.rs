@@ -19,6 +19,7 @@ pub fn run() {
             commands::greet,
             commands::load_image_info,
             commands::load_images_info,
+            commands::load_images_from_folder,
             commands::process_images,
             commands::cancel_processing,
             commands::get_processing_status,

@@ -113,26 +113,28 @@ impl ImageProcessor for ImageProcessorImpl {
             ));
         }
 
-        // Cargar imagen
-        let dynamic_img = self
-            .load_dynamic_image(path)
+        // ✅ OPTIMIZACIÓN: Leer SOLO metadata sin decodificar la imagen completa
+        // Esto es MUCHO más rápido que decodificar toda la imagen
+        let reader = image::ImageReader::open(path)
             .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
 
-        // Obtener metadata del archivo
+        // Obtener dimensiones SIN decodificar
+        let dimensions_result = reader.into_dimensions()
+            .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
+        let (width, height) = dimensions_result;
+        let dimensions = Dimensions::new(width, height)?;
+
+        // Obtener metadata del archivo (tamaño)
         let metadata_fs =
             fs::metadata(path).map_err(|e| DomainError::InvalidFilePath(e.to_string()))?;
         let size_bytes = metadata_fs.len();
-
-        // Obtener dimensiones
-        let (width, height) = dynamic_img.dimensions();
-        let dimensions = Dimensions::new(width, height)?;
 
         // Detectar formato
         let format =
             ImageFormat::from_extension(path.extension().and_then(|s| s.to_str()).unwrap_or(""))?;
 
-        // Crear Image
-        let mut image = Image::new(
+        // Crear Image (solo metadata, no la imagen decodificada)
+        let image = Image::new(
             path.to_path_buf(),
             format,
             dimensions,

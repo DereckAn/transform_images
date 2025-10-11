@@ -1,43 +1,188 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="/src/styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
+    <meta
+      name="viewport"
+      content="width=device-width, 
+  initial-scale=1.0"
+    />
+    <title>Transform Images</title>
     <script type="module" src="/src/main.ts" defer></script>
   </head>
 
   <body>
-    <main class="container">
-      <h1>Welcome to Tauri</h1>
+    <div class="app-container">
+      <!-- Header -->
+      <header class="app-header">
+        <h1>Transform Images</h1>
+        <p class="subtitle">Image Optimization & Transformation</p>
+      </header>
 
-      <div class="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/src/assets/vite.svg" class="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img
-            src="/src/assets/tauri.svg"
-            class="logo tauri"
-            alt="Tauri logo"
-          />
-        </a>
-        <a href="https://www.typescriptlang.org/docs" target="_blank">
-          <img
-            src="/src/assets/typescript.svg"
-            class="logo typescript"
-            alt="typescript logo"
-          />
-        </a>
-      </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Settings Panel -->
+        <section class="settings-panel">
+          <h3>Settings</h3>
 
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
-      </form>
-      <p id="greet-msg"></p>
-    </main>
+          <div class="settings-grid">
+            <!-- Quality -->
+            <div class="setting-group">
+              <label for="quality"
+                >Quality: <span id="quality-value">85</span>%</label
+              >
+              <input type="range" id="quality" min="1" max="100" value="85" />
+            </div>
+
+            <!-- Output Format -->
+            <div class="setting-group">
+              <label for="output-format">Output Format</label>
+              <select id="output-format">
+                <option value="">Keep Original</option>
+                <option value="png">PNG</option>
+                <option value="jpg">JPEG</option>
+                <option value="webp">WebP</option>
+              </select>
+            </div>
+
+            <!-- Output Directory -->
+            <div class="setting-group full-width">
+              <label for="output-dir">Output Directory</label>
+              <div class="input-with-button">
+                <input
+                  type="text"
+                  id="output-dir"
+                  placeholder="Select output directory..."
+                  readonly
+                />
+                <button class="btn btn-secondary" id="select-dir-btn">
+                  Browse
+                </button>
+              </div>
+            </div>
+
+            <!-- Preserve Metadata -->
+            <div class="setting-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="preserve-metadata" />
+                <span>Preserve Metadata</span>
+              </label>
+            </div>
+
+            <!-- Overwrite Existing -->
+            <div class="setting-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="overwrite-existing" />
+                <span>Overwrite Existing Files</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- ✅ NUEVO: Contenedor único que alterna entre Drop Zone 
+  e Images List -->
+        <section class="images-container">
+          <!-- Drop Zone (se muestra cuando no hay imágenes) -->
+          <div class="drop-zone-view" id="drop-zone-view">
+            <div class="drop-zone" id="drop-zone">
+              <div class="drop-zone-content">
+                <svg
+                  class="drop-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0
+  1-2-2v-4"
+                  ></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <h2>Drag & Drop Images or Folders</h2>
+                <p>or click to browse</p>
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                  <button class="btn btn-primary" id="browse-btn">
+                    Browse Files
+                  </button>
+                  <button class="btn btn-secondary" id="browse-folder-btn">
+                    Browse Folder
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Images List (se muestra cuando hay imágenes) -->
+          <div
+            class="images-list-view"
+            id="images-list-view"
+            style="display: none"
+          >
+            <div class="section-header">
+              <h3>Images (<span id="image-count">0</span>)</h3>
+              <button class="btn btn-small btn-danger" id="clear-btn">
+                Clear All
+              </button>
+            </div>
+
+            <div class="images-list" id="images-list"></div>
+          </div>
+        </section>
+
+        <!-- Progress Section -->
+        <section
+          class="progress-section"
+          id="progress-section"
+          style="display: none"
+        >
+          <h3>Processing</h3>
+          <div class="progress-info">
+            <span id="progress-text">Processing: 0 / 0</span>
+            <span id="progress-percent">0%</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+          <p class="current-file" id="current-file"></p>
+        </section>
+
+        <!-- Results Section -->
+        <section
+          class="results-section"
+          id="results-section"
+          style="display: none"
+        >
+          <h3>Results</h3>
+          <div class="results-stats" id="results-stats"></div>
+          <div class="results-list" id="results-list"></div>
+        </section>
+
+        <!-- Action Buttons -->
+        <section class="actions-section">
+          <button class="btn btn-primary btn-large" id="process-btn" disabled>
+            Process Images
+          </button>
+          <button
+            class="btn btn-danger btn-large"
+            id="cancel-btn"
+            style="display: none"
+          >
+            Cancel
+          </button>
+        </section>
+      </main>
+
+      <!-- Footer -->
+      <footer class="app-footer">
+        <p>
+          Built with Tauri + Rust • Optimal Threads:
+          <span id="thread-count">0</span>
+        </p>
+      </footer>
+    </div>
   </body>
 </html>

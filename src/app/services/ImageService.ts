@@ -43,6 +43,13 @@ export class ImageService {
   }
 
   /**
+   * Load images from a folder
+   */
+  async loadImagesFromFolder(folderPath: string): Promise<ImageInfo[]> {
+    return invoke("load_images_from_folder", { folderPath });
+  }
+
+  /**
    * Process images with optimization and optional transformations
    */
   async processImages(request: BatchProcessRequest): Promise<ProcessedImage[]> {
