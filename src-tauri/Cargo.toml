@@ -1,58 +1,61 @@
- [package]
-  name = "transform-images"
-  version = "0.1.0"
-  description = "Professional image transformation and optimization tool"
-  authors = ["laruina"]
-  edition = "2021"
-  rust-version = "1.70"
+[package]
+name = "transform-images"
+version = "0.1.0"
+description = "Professional image transformation and optimization tool"
+authors = ["laruina"]
+edition = "2021"
+rust-version = "1.70"
 
-  [lib]
-  name = "transform_images_lib"
-  crate-type = ["staticlib", "cdylib", "rlib"]
+[lib]
+name = "transform_images_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
 
-  [build-dependencies]
-  tauri-build = { version = "2", features = [] }
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
 
-  [dependencies]
-  # Tauri Core
-  tauri = { version = "2", features = ["protocol-asset"] }
-  tauri-plugin-opener = "2"
-  tauri-plugin-dialog = "2"
+[dependencies]
+# Tauri Core
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
 
-  # Serialization
-  serde = { version = "1.0", features = ["derive"] }
-  serde_json = "1.0"
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
-  # Image Processing
-  image = { version = '0.25', default-features = false, features = ['png', 'jpeg', 'webp', 'gif'] }
-  oxipng = { version = "9.1", default-features = false }
-  mozjpeg = "0.10"
-  
-  # Usar versión local parcheada de libraw-sys (sin enlace automático de stdc++)
-  libraw-sys = { path = "vendor/libraw-sys" }
+# Image Processing
+image = { version = '0.25', default-features = false, features = ['png', 'jpeg', 'webp', 'gif'] }
+oxipng = { version = "9.1", default-features = false }
+mozjpeg = "0.10"
 
-  # Async Runtime
-  tokio = { version = "1.40", features = ["full"] }
+# ✅ ENLACE ESTÁTICO: Binario autocontenido (no requiere libraw en máquina del usuario)
+# ❌ Para desarrollo: cambiar a: libraw-sys = { path = "vendor/libraw-sys" }
+libraw-sys = { path = "vendor/libraw-sys", features = ["static"] }
 
-  # Parallelism
-  rayon = "1.10"
+# Async Runtime
+tokio = { version = "1.40", features = ["full"] }
 
-  # Error Handling
-  thiserror = "1.0"
-  anyhow = "1.0"
+# Parallelism
+rayon = "1.10"
 
-  # File System
-  walkdir = "2.5"
+# Error Handling
+thiserror = "1.0"
+anyhow = "1.0"
 
-  # Atomic Operations
-  parking_lot = "0.12"
+# File System
+walkdir = "2.5"
 
-  [dev-dependencies]
-  mockall = "0.13"
-  tempfile = "3.12"
-  # criterion = "0.5"  # Comentado por ahora, lo usaremos en fases posteriores
+# Atomic Operations
+parking_lot = "0.12"
 
-  # [[bench]]
-  # name = "image_processing"
-  # harness = false
-  # Benchmarks se agregarán en fases posteriores para medir performance
+[dev-dependencies]
+mockall = "0.13"
+tempfile = "3.12"
+
+# Perfiles de compilación optimizados para distribución
+[profile.release]
+opt-level = "z"     # Optimizar para tamaño (en lugar de velocidad)
+lto = true          # Link Time Optimization (binario más pequeño y rápido)
+codegen-units = 1   # Mejor optimización (compila más lento pero mejor resultado)
+strip = true        # Eliminar símbolos de debug (binario más pequeño)
+panic = "abort"     # Binarios más pequeños (no genera unwinding code)
