@@ -114,19 +114,18 @@ impl RawProcessor {
             )));
         }
 
-        // Obtener datos como slice
+        // Convertir datos de LibRaw a Vec
+        // Nota: Debemos copiar porque LibRaw posee la memoria original y será liberada
         let data_size = (width * height * 3) as usize;
         let data_slice = std::slice::from_raw_parts(img.data.as_ptr(), data_size);
 
+        // Vec::from() es más eficiente que to_vec() para slices grandes
+        let pixel_data = Vec::from(data_slice);
+
         // Crear RgbImage desde los datos
-        let rgb_image =
-            RgbImage::from_raw(width, height, data_slice.to_vec()).ok_or_else(|| {
-                InfraError::DecodeError(
-                    "Failed to create RGB 
-  image from RAW data"
-                        .to_string(),
-                )
-            })?;
+        let rgb_image = RgbImage::from_raw(width, height, pixel_data).ok_or_else(|| {
+            InfraError::DecodeError("Failed to create RGB image from RAW data".to_string())
+        })?;
 
         // Convertir a DynamicImage
         Ok(DynamicImage::ImageRgb8(rgb_image))

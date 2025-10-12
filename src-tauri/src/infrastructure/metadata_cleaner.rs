@@ -27,7 +27,9 @@ impl MetadataCleaner {
 
     /// Elimina metadatos de JPEG
     fn strip_jpeg_metadata(&self, data: &[u8]) -> InfraResult<Vec<u8>> {
-        let mut jpeg = Jpeg::from_bytes(Bytes::copy_from_slice(data))
+        // Convertir &[u8] a Bytes de forma eficiente
+        // Bytes::from() usa Vec::from() internamente, evitando copias intermedias
+        let mut jpeg = Jpeg::from_bytes(Bytes::from(data.to_vec()))
             .map_err(|e| InfraError::DecodeError(format!("Failed to parse JPEG: {}", e)))?;
 
         // Eliminar EXIF
@@ -40,7 +42,8 @@ impl MetadataCleaner {
 
     /// Elimina metadatos de PNG
     fn strip_png_metadata(&self, data: &[u8]) -> InfraResult<Vec<u8>> {
-        let mut png = Png::from_bytes(Bytes::copy_from_slice(data))
+        // Convertir &[u8] a Bytes de forma eficiente
+        let mut png = Png::from_bytes(Bytes::from(data.to_vec()))
             .map_err(|e| InfraError::DecodeError(format!("Failed to parse PNG: {}", e)))?;
 
         // Eliminar EXIF
@@ -53,7 +56,8 @@ impl MetadataCleaner {
 
     /// Elimina metadatos de WebP
     fn strip_webp_metadata(&self, data: &[u8]) -> InfraResult<Vec<u8>> {
-        let mut webp = WebP::from_bytes(Bytes::copy_from_slice(data))
+        // Convertir &[u8] a Bytes de forma eficiente
+        let mut webp = WebP::from_bytes(Bytes::from(data.to_vec()))
             .map_err(|e| InfraError::DecodeError(format!("Failed to parse WebP: {}", e)))?;
 
         // Eliminar EXIF

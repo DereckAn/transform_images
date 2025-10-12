@@ -50,7 +50,7 @@ impl Default for Resizer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::value_objects::Dimensions;
+    // use crate::domain::value_objects::Dimensions;
 
     #[test]
     fn test_convert_filter() {
