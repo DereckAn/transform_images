@@ -17,10 +17,8 @@ El workflow `build-release.yml` automatiza la compilación y distribución de Tr
 |------------|--------|---------------|------------|
 | macOS Intel | x86_64-apple-darwin | ✅ .dmg | ✅ .tar.gz |
 | macOS Apple Silicon | aarch64-apple-darwin | ✅ .dmg | ✅ .tar.gz |
-| Windows | x86_64-pc-windows-msvc | ⚠️ .msi/.exe | ⚠️ .zip |
+| Windows | x86_64-pc-windows-msvc | ✅ .msi/.exe | ✅ .zip |
 | Linux | x86_64-unknown-linux-gnu | ✅ .AppImage/.deb | ✅ .tar.gz |
-
-⚠️ = Configuración de LibRaw pendiente
 
 ### Jobs del Workflow
 
@@ -40,6 +38,19 @@ El workflow `build-release.yml` automatiza la compilación y distribución de Tr
 - Útil para distribución standalone
 - Genera artifacts comprimidos
 
+### Estrategia de Enlace
+
+El proyecto usa **enlace condicional** controlado por Cargo features:
+
+- **macOS y Windows**: Enlace estático (`--features static`)
+  - Binarios autocontenidos, no requieren dependencias externas
+  - Mayor tamaño pero máxima portabilidad
+
+- **Linux**: Enlace dinámico (sin features)
+  - Binarios más pequeños
+  - Requiere que el usuario tenga `libraw`, `liblcms2` y `libjpeg` instalados
+  - Compatible con gestores de paquetes estándar (apt, dnf, pacman)
+
 ### Dependencias por Plataforma
 
 #### macOS
@@ -58,15 +69,20 @@ sudo apt-get install -y \
   libwebkit2gtk-4.1-dev \
   libayatana-appindicator3-dev
 ```
-- ✅ Configurado para enlace dinámico
-- ⚠️ Enlace estático requiere compilar librerías
+- ✅ Configurado para enlace dinámico (bibliotecas disponibles en repositorios)
+- ℹ️ Los usuarios necesitan tener libraw instalado en su sistema
+- 💡 Enlace estático posible pero requiere compilar librerías desde fuente
 
 #### Windows
-- ⚠️ **Pendiente**: Configurar LibRaw
-- Opciones:
-  - Compilar LibRaw desde fuente
-  - Usar vcpkg
-  - Empaquetar DLLs con el instalador
+```powershell
+# vcpkg se instala automáticamente en el workflow
+vcpkg install libraw:x64-windows-static
+vcpkg install lcms:x64-windows-static
+vcpkg install libjpeg-turbo:x64-windows-static
+```
+- ✅ Configurado para enlace estático con vcpkg
+- ✅ Instalación automática en GitHub Actions
+- ✅ Binario autocontenido sin dependencias externas
 
 ### Caché
 
@@ -131,8 +147,10 @@ Puedes descargarlos desde la pestaña Actions → Run específico → Artifacts.
 
 ### Mejoras Futuras
 
-- [ ] Configurar LibRaw para Windows
-- [ ] Habilitar enlace estático en Linux
+- [x] Configurar LibRaw para Windows
+- [x] Sistema de enlace condicional (estático/dinámico)
+- [ ] Agregar caché para vcpkg en Windows (acelerar builds)
+- [ ] Considerar enlace estático en Linux (requiere compilar librerías)
 - [ ] Agregar firma de código para macOS/Windows
 - [ ] Agregar notarización para macOS
 - [ ] Publicar automáticamente en Homebrew
