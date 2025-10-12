@@ -11,6 +11,11 @@ rust-version = "1.70"
 name = "transform_images_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+default = []
+# Enlace estático de LibRaw (para distribución en macOS/Windows)
+static = ["libraw-sys/static"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -30,9 +35,9 @@ oxipng = { version = "9.1", default-features = false }
 mozjpeg = "0.10"
 img-parts = "0.3"
 
-# ENLACE ESTÁTICO: Binario autocontenido (no requiere libraw en máquina del usuario)
-# Para desarrollo: cambiar a: libraw-sys = { path = "vendor/libraw-sys" }
-libraw-sys = { path = "vendor/libraw-sys", features = ["static"] }
+# LibRaw FFI bindings
+# El enlace estático se controla vía feature flags en build time
+libraw-sys = { path = "vendor/libraw-sys" }
 
 # Async Runtime
 tokio = { version = "1.40", features = ["full"] }

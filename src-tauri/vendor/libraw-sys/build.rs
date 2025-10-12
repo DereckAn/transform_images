@@ -85,7 +85,64 @@ fn configure_linux(is_static: bool) {
     }
 }
 
-fn configure_windows(_is_static: bool) {
-    println!("cargo:warning=⚠️ Windows build not yet fully configured");
-    // TODO: Configurar para Windows cuando sea necesario
+fn configure_windows(is_static: bool) {
+    use std::path::Path;
+
+    if is_static {
+        println!("cargo:warning=🔗 LibRaw: Enlace ESTÁTICO (binario autocontenido)");
+
+        // Buscar bibliotecas en vcpkg o en directorio personalizado
+        let vcpkg_root = env::var("VCPKG_ROOT")
+            .or_else(|_| env::var("VCPKG_INSTALLATION_ROOT"))
+            .unwrap_or_else(|_| {
+                // Ubicación por defecto en GitHub Actions
+                "C:\\vcpkg".to_string()
+            });
+
+        let target = env::var("TARGET").unwrap();
+        let vcpkg_triplet = if target.contains("x86_64") {
+            "x64-windows-static"
+        } else if target.contains("i686") {
+            "x86-windows-static"
+        } else if target.contains("aarch64") {
+            "arm64-windows-static"
+        } else {
+            "x64-windows-static"
+        };
+
+        let lib_path = format!("{}\\installed\\{}\\lib", vcpkg_root, vcpkg_triplet);
+
+        // Verificar que las bibliotecas existen
+        let raw_lib = Path::new(&lib_path).join("raw_r.lib");
+        let lcms2_lib = Path::new(&lib_path).join("lcms2.lib");
+        let jpeg_lib = Path::new(&lib_path).join("jpeg.lib");
+        let zlib_lib = Path::new(&lib_path).join("zlib.lib");
+
+        if raw_lib.exists() && lcms2_lib.exists() && jpeg_lib.exists() && zlib_lib.exists() {
+            println!("cargo:warning=✓ Bibliotecas estáticas encontradas en vcpkg");
+            println!("cargo:rustc-link-search=native={}", lib_path);
+
+            // Enlazar bibliotecas estáticamente
+            println!("cargo:rustc-link-lib=static=raw_r");
+            println!("cargo:rustc-link-lib=static=lcms2");
+            println!("cargo:rustc-link-lib=static=jpeg");
+            println!("cargo:rustc-link-lib=static=zlib");  // Necesario para LibRaw (descompresión DNG)
+
+            // Dependencias del sistema de Windows
+            println!("cargo:rustc-link-lib=dylib=ws2_32");
+            println!("cargo:rustc-link-lib=dylib=userenv");
+        } else {
+            println!("cargo:warning=❌ Bibliotecas NO encontradas en: {}", lib_path);
+            println!("cargo:warning=   Esperando: raw_r.lib, lcms2.lib, jpeg.lib, zlib.lib");
+            println!("cargo:warning=   Instala con: vcpkg install libraw:x64-windows-static lcms:x64-windows-static libjpeg-turbo:x64-windows-static zlib:x64-windows-static");
+            panic!("LibRaw libraries not found. Please install via vcpkg.");
+        }
+    } else {
+        println!("cargo:warning=🔗 LibRaw: Enlace DINÁMICO (modo desarrollo)");
+
+        // Enlace dinámico para desarrollo
+        println!("cargo:rustc-link-lib=dylib=raw");
+        println!("cargo:rustc-link-lib=dylib=lcms2");
+        println!("cargo:rustc-link-lib=dylib=jpeg");
+    }
 }

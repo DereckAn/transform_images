@@ -1,0 +1,199 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Permisos necesarios para crear releases y subir artifacts
+permissions:
+  contents: write
+  packages: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libraw-dev \
+            liblcms2-dev \
+            libjpeg-dev
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run tests
+        run: cd src-tauri && cargo test --lib --verbose
+
+  build-tauri:
+    name: Build Tauri App
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS Intel (static linking)
+          - platform: macos-13
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin --features static
+
+          # macOS Apple Silicon (static linking)
+          - platform: macos-14
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin --features static
+
+          # Windows (static linking)
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            args: --features static
+
+          # Linux (dynamic linking - no static feature)
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # macOS dependencies
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install libraw little-cms2 jpeg-turbo
+
+      # Windows dependencies
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          # Install vcpkg
+          Write-Host "Installing vcpkg..."
+          git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+          C:\vcpkg\bootstrap-vcpkg.bat
+
+          # Install LibRaw and dependencies (static linking)
+          Write-Host "Installing LibRaw and dependencies..."
+          C:\vcpkg\vcpkg install libraw:x64-windows-static
+          C:\vcpkg\vcpkg install lcms:x64-windows-static
+          C:\vcpkg\vcpkg install libjpeg-turbo:x64-windows-static
+          C:\vcpkg\vcpkg install zlib:x64-windows-static
+
+          # Set environment variable for subsequent steps
+          echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
+
+      # Linux dependencies
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libraw-dev \
+            liblcms2-dev \
+            libjpeg-dev
+          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig" >> $GITHUB_ENV
+
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Solo crear release si es un tag que comienza con 'v'
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && format('Transform Images v{0}', github.ref_name) || '' }}
+          releaseBody: |
+            ## Transform Images ${{ github.ref_name }}
+
+            Professional image transformation and optimization tool with RAW format support.
+
+            ### Features
+            - 🖼️ RAW format support (Sony, Canon, Nikon, etc.)
+            - ⚡ Batch processing with multithreading
+            - 🎨 Advanced transformations (resize, rotate, flip)
+            - 🗜️ Smart optimization (JPEG, PNG, WebP)
+            - 🧹 Automatic metadata removal
+
+            ### Downloads
+            Choose the appropriate version for your platform:
+            - **macOS Intel**: `.dmg` (x86_64)
+            - **macOS Apple Silicon**: `.dmg` (aarch64)
+            - **Windows**: `.msi` or `.exe`
+            - **Linux**: `.AppImage` or `.deb`
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
