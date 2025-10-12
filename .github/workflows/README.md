@@ -90,16 +90,26 @@ El workflow usa caché de GitHub Actions para:
 - Cargo registry (`~/.cargo/registry`)
 - Cargo git (`~/.cargo/git`)
 - Build artifacts (`src-tauri/target`)
-- npm packages (`node_modules`)
+- Bun usa caché global automática (más rápido que npm)
 
 Esto reduce el tiempo de compilación de ~10 minutos a ~3 minutos.
+
+### Por qué Bun en lugar de Node.js
+
+El proyecto usa **Bun** como runtime de JavaScript por varias razones:
+
+- ⚡ **10x más rápido** que npm para instalar dependencias
+- 🚀 **Builds más rápidos** en CI/CD
+- 📦 **Compatible** con el ecosistema npm (drop-in replacement)
+- 🎯 **Mejor experiencia** de desarrollo local
+- 💾 **Caché global** reduce espacio en disco
 
 ### Crear un Release
 
 1. **Asegúrate de que todo funciona**:
    ```bash
    cargo test --release
-   npm run tauri build
+   bun run tauri build
    ```
 
 2. **Crea un tag**:
