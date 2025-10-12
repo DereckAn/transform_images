@@ -13,12 +13,12 @@ El workflow `build-release.yml` automatiza la compilación y distribución de Tr
 
 ### Plataformas Soportadas
 
-| Plataforma | Target | Binario Tauri | CLI Binary |
-|------------|--------|---------------|------------|
-| macOS Intel | x86_64-apple-darwin | ✅ .dmg | ✅ .tar.gz |
-| macOS Apple Silicon | aarch64-apple-darwin | ✅ .dmg | ✅ .tar.gz |
-| Windows | x86_64-pc-windows-msvc | ✅ .msi/.exe | ✅ .zip |
-| Linux | x86_64-unknown-linux-gnu | ✅ .AppImage/.deb | ✅ .tar.gz |
+| Plataforma | Target | Instalador |
+|------------|--------|------------|
+| macOS Intel | x86_64-apple-darwin | ✅ .dmg |
+| macOS Apple Silicon | aarch64-apple-darwin | ✅ .dmg |
+| Windows | x86_64-pc-windows-msvc | ✅ .msi/.exe |
+| Linux | x86_64-unknown-linux-gnu | ✅ .AppImage/.deb |
 
 ### Jobs del Workflow
 
@@ -32,11 +32,7 @@ El workflow `build-release.yml` automatiza la compilación y distribución de Tr
 - Crea instaladores nativos (.dmg, .msi, .deb, .AppImage)
 - Usa `tauri-action` oficial
 - Crea draft release automáticamente en tags
-
-#### 3. **Build CLI Binary** (`build-cli`)
-- Compila solo el binario de Rust
-- Útil para distribución standalone
-- Genera artifacts comprimidos
+- Soporta 4 plataformas en paralelo (macOS Intel/ARM, Windows, Linux)
 
 ### Estrategia de Enlace
 
@@ -133,13 +129,16 @@ El proyecto usa **Bun** como runtime de JavaScript por varias razones:
 
 ### Artifacts
 
-Los binarios compilados están disponibles como artifacts en cada run:
-- `transform-images-macos-intel.tar.gz`
-- `transform-images-macos-apple-silicon.tar.gz`
-- `transform-images-linux.tar.gz`
-- `transform-images-windows.exe.zip`
+Los instaladores generados están disponibles en:
+- **Tags de versión** (`v*`): Automáticamente adjuntos al draft release
+- **Push a main/PRs**: Disponibles como artifacts temporales (90 días)
 
-Puedes descargarlos desde la pestaña Actions → Run específico → Artifacts.
+Formatos generados:
+- macOS: `.dmg` y `.app.tar.gz`
+- Windows: `.msi` y `.exe`
+- Linux: `.AppImage` y `.deb`
+
+Acceso: GitHub → Actions → Run específico → Artifacts (o Release si es un tag)
 
 ### Troubleshooting
 
