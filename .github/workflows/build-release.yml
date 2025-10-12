@@ -129,6 +129,7 @@ jobs:
           C:\vcpkg\vcpkg install libraw:x64-windows-static
           C:\vcpkg\vcpkg install lcms:x64-windows-static
           C:\vcpkg\vcpkg install libjpeg-turbo:x64-windows-static
+          C:\vcpkg\vcpkg install zlib:x64-windows-static
 
           # Set environment variable for subsequent steps
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
@@ -261,6 +262,7 @@ jobs:
           C:\vcpkg\vcpkg install libraw:x64-windows-static
           C:\vcpkg\vcpkg install lcms:x64-windows-static
           C:\vcpkg\vcpkg install libjpeg-turbo:x64-windows-static
+          C:\vcpkg\vcpkg install zlib:x64-windows-static
 
           # Set environment variable for subsequent steps
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV

@@ -79,10 +79,12 @@ sudo apt-get install -y \
 vcpkg install libraw:x64-windows-static
 vcpkg install lcms:x64-windows-static
 vcpkg install libjpeg-turbo:x64-windows-static
+vcpkg install zlib:x64-windows-static
 ```
 - ✅ Configurado para enlace estático con vcpkg
 - ✅ Instalación automática en GitHub Actions
 - ✅ Binario autocontenido sin dependencias externas
+- ℹ️ zlib es necesario para descompresión de archivos DNG en LibRaw
 
 ### Caché
 
