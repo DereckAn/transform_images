@@ -2,7 +2,7 @@
   name = "transform-images"
   version = "0.1.0"
   description = "Professional image transformation and optimization tool"
-  authors = ["laruina"]
+  authors = ["DereckAn"]
   edition = "2021"
   rust-version = "1.70"
 

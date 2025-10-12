@@ -47,7 +47,13 @@ impl ImageProcessorImpl {
         }
 
         // Use standard image decoder for other formats
-        image::open(path).map_err(|e| InfraError::ImageReadError(e.to_string()))
+        image::open(path).map_err(|e| {
+            InfraError::ImageReadError(format!(
+                "Failed to open image file '{}': {}",
+                path.display(),
+                e
+            ))
+        })
     }
 
     /// Convert domain ImageFormat to image crate format
@@ -73,7 +79,14 @@ impl ImageProcessorImpl {
                 let mut bytes = Vec::new();
                 let mut cursor = Cursor::new(&mut bytes);
                 img.write_to(&mut cursor, ImageCrateFormat::Png)
-                    .map_err(|e| InfraError::EncodeError(e.to_string()))?;
+                    .map_err(|e| {
+                        InfraError::EncodeError(format!(
+                            "Failed to encode PNG ({}x{}): {}",
+                            img.width(),
+                            img.height(),
+                            e
+                        ))
+                    })?;
                 self.png_optimizer.optimize(&bytes, settings.quality())?
             }
             ImageFormat::Jpeg | ImageFormat::Raw => self
@@ -83,7 +96,15 @@ impl ImageProcessorImpl {
                 let mut bytes = Vec::new();
                 let mut cursor = Cursor::new(&mut bytes);
                 img.write_to(&mut cursor, Self::convert_format(format))
-                    .map_err(|e| InfraError::EncodeError(e.to_string()))?;
+                    .map_err(|e| {
+                        InfraError::EncodeError(format!(
+                            "Failed to encode {:?} ({}x{}): {}",
+                            format,
+                            img.width(),
+                            img.height(),
+                            e
+                        ))
+                    })?;
                 bytes
             }
         };

@@ -29,8 +29,13 @@ impl MetadataCleaner {
     fn strip_jpeg_metadata(&self, data: &[u8]) -> InfraResult<Vec<u8>> {
         // Convertir &[u8] a Bytes de forma eficiente
         // Bytes::from() usa Vec::from() internamente, evitando copias intermedias
-        let mut jpeg = Jpeg::from_bytes(Bytes::from(data.to_vec()))
-            .map_err(|e| InfraError::DecodeError(format!("Failed to parse JPEG: {}", e)))?;
+        let mut jpeg = Jpeg::from_bytes(Bytes::from(data.to_vec())).map_err(|e| {
+            InfraError::DecodeError(format!(
+                "Failed to parse JPEG file ({} bytes): {}",
+                data.len(),
+                e
+            ))
+        })?;
 
         // Eliminar EXIF
         jpeg.set_exif(None);
@@ -43,8 +48,13 @@ impl MetadataCleaner {
     /// Elimina metadatos de PNG
     fn strip_png_metadata(&self, data: &[u8]) -> InfraResult<Vec<u8>> {
         // Convertir &[u8] a Bytes de forma eficiente
-        let mut png = Png::from_bytes(Bytes::from(data.to_vec()))
-            .map_err(|e| InfraError::DecodeError(format!("Failed to parse PNG: {}", e)))?;
+        let mut png = Png::from_bytes(Bytes::from(data.to_vec())).map_err(|e| {
+            InfraError::DecodeError(format!(
+                "Failed to parse PNG file ({} bytes): {}",
+                data.len(),
+                e
+            ))
+        })?;
 
         // Eliminar EXIF
         png.set_exif(None);
@@ -57,8 +67,13 @@ impl MetadataCleaner {
     /// Elimina metadatos de WebP
     fn strip_webp_metadata(&self, data: &[u8]) -> InfraResult<Vec<u8>> {
         // Convertir &[u8] a Bytes de forma eficiente
-        let mut webp = WebP::from_bytes(Bytes::from(data.to_vec()))
-            .map_err(|e| InfraError::DecodeError(format!("Failed to parse WebP: {}", e)))?;
+        let mut webp = WebP::from_bytes(Bytes::from(data.to_vec())).map_err(|e| {
+            InfraError::DecodeError(format!(
+                "Failed to parse WebP file ({} bytes): {}",
+                data.len(),
+                e
+            ))
+        })?;
 
         // Eliminar EXIF
         webp.set_exif(None);
