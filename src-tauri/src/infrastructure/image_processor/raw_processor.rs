@@ -4,6 +4,22 @@ use std::path::Path;
 
 use crate::infrastructure::error::{InfraError, InfraResult};
 
+/// Helper: Convert LibRaw error code to human-readable message
+fn libraw_error_message(code: i32) -> &'static str {
+    match code {
+        -1 => "Unspecified error",
+        -2 => "Unsupported file format",
+        -3 => "Request for nonexistent image number",
+        -4 => "Out of order call of LibRaw function",
+        -5 => "No thumbnail in file",
+        -6 => "Unsupported thumbnail format",
+        -7 => "Cannot parse input file",
+        -100007 => "Cancelled by user callback",
+        -100008 => "Bad crop box",
+        _ => "Unknown error",
+    }
+}
+
 /// RAW image processor using LibRaw directly via FFI
 /// Supports ALL cameras including Sony a7C, Canon R5, Nikon Z9,   etc.
 pub struct RawProcessor;
@@ -52,7 +68,9 @@ impl RawProcessor {
             let ret = libraw_sys::libraw_open_file(data, c_path.as_ptr());
             if ret != 0 {
                 return Err(InfraError::ImageReadError(format!(
-                    "Failed to open RAW file: error code {}",
+                    "Failed to open RAW file '{}': {} (error {})",
+                    path.display(),
+                    libraw_error_message(ret),
                     ret
                 )));
             }
@@ -61,16 +79,20 @@ impl RawProcessor {
             let ret = libraw_sys::libraw_unpack(data);
             if ret != 0 {
                 return Err(InfraError::DecodeError(format!(
-                    "Failed to unpack RAW data: error code {}",
+                    "Failed to unpack RAW data from '{}': {} (error {})",
+                    path.display(),
+                    libraw_error_message(ret),
                     ret
                 )));
             }
 
-            // Paso 4: Procesar RAW → RGB (demosaicing, balance   blanco, corrección color)
+            // Paso 4: Procesar RAW → RGB (demosaicing, balance blanco, corrección color)
             let ret = libraw_sys::libraw_dcraw_process(data);
             if ret != 0 {
                 return Err(InfraError::DecodeError(format!(
-                    "Failed to process RAW data: error code {}",
+                    "Failed to process RAW data from '{}': {} (error {})",
+                    path.display(),
+                    libraw_error_message(ret),
                     ret
                 )));
             }
@@ -80,8 +102,9 @@ impl RawProcessor {
             let processed = libraw_sys::libraw_dcraw_make_mem_image(data, &mut err_code);
             if processed.is_null() {
                 return Err(InfraError::DecodeError(format!(
-                    "Failed to create image from RAW: error code 
-  {}",
+                    "Failed to create image from RAW file '{}': {} (error {})",
+                    path.display(),
+                    libraw_error_message(err_code),
                     err_code
                 )));
             }
@@ -114,19 +137,18 @@ impl RawProcessor {
             )));
         }
 
-        // Obtener datos como slice
+        // Convertir datos de LibRaw a Vec
+        // Nota: Debemos copiar porque LibRaw posee la memoria original y será liberada
         let data_size = (width * height * 3) as usize;
         let data_slice = std::slice::from_raw_parts(img.data.as_ptr(), data_size);
 
+        // Vec::from() es más eficiente que to_vec() para slices grandes
+        let pixel_data = Vec::from(data_slice);
+
         // Crear RgbImage desde los datos
-        let rgb_image =
-            RgbImage::from_raw(width, height, data_slice.to_vec()).ok_or_else(|| {
-                InfraError::DecodeError(
-                    "Failed to create RGB 
-  image from RAW data"
-                        .to_string(),
-                )
-            })?;
+        let rgb_image = RgbImage::from_raw(width, height, pixel_data).ok_or_else(|| {
+            InfraError::DecodeError("Failed to create RGB image from RAW data".to_string())
+        })?;
 
         // Convertir a DynamicImage
         Ok(DynamicImage::ImageRgb8(rgb_image))

@@ -1,3 +1,4 @@
+
 [package]
 name = "transform-images"
 version = "0.1.0"
@@ -27,9 +28,10 @@ serde_json = "1.0"
 image = { version = '0.25', default-features = false, features = ['png', 'jpeg', 'webp', 'gif'] }
 oxipng = { version = "9.1", default-features = false }
 mozjpeg = "0.10"
+img-parts = "0.3"
 
-# ✅ ENLACE ESTÁTICO: Binario autocontenido (no requiere libraw en máquina del usuario)
-# ❌ Para desarrollo: cambiar a: libraw-sys = { path = "vendor/libraw-sys" }
+# ENLACE ESTÁTICO: Binario autocontenido (no requiere libraw en máquina del usuario)
+# Para desarrollo: cambiar a: libraw-sys = { path = "vendor/libraw-sys" }
 libraw-sys = { path = "vendor/libraw-sys", features = ["static"] }
 
 # Async Runtime

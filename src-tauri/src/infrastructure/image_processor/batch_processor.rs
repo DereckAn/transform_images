@@ -1,5 +1,5 @@
 use rayon::prelude::*;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -40,7 +40,6 @@ pub type ProgressCallback = Arc<dyn Fn(usize, usize, &str) + Send + Sync>;
 
 /// Batch processor for processing multiple images in parallel
 pub struct BatchProcessor {
-    processor: Arc<ImageProcessorImpl>,
     max_threads: Option<usize>,
 }
 
@@ -48,7 +47,6 @@ impl BatchProcessor {
     /// Create a new batch processor
     pub fn new() -> Self {
         Self {
-            processor: Arc::new(ImageProcessorImpl::new()),
             max_threads: None,
         }
     }
@@ -56,7 +54,6 @@ impl BatchProcessor {
     /// Create with custom thread pool size
     pub fn with_threads(max_threads: usize) -> Self {
         Self {
-            processor: Arc::new(ImageProcessorImpl::new()),
             max_threads: Some(max_threads),
         }
     }
@@ -127,6 +124,9 @@ impl BatchProcessor {
         let original_path = image.path().to_path_buf();
         let original_size = image.size_bytes();
 
+        // Crear procesador para este thread (stateless, barato de crear)
+        let processor = ImageProcessorImpl::new();
+
         // Determinar ruta de salida
         let output_path = match self.determine_output_path(image, settings) {
             Ok(path) => path,
@@ -143,12 +143,12 @@ impl BatchProcessor {
         };
 
         // Procesar imagen
-        match self.processor.process(image, transformation, settings) {
+        match processor.process(image, transformation, settings) {
             Ok(data) => {
                 let output_size = data.len() as u64;
 
                 // Guardar archivo
-                match self.processor.save_image(
+                match processor.save_image(
                     &data,
                     &output_path,
                     settings.determine_output_format(image.format()),
@@ -189,11 +189,9 @@ impl BatchProcessor {
         settings: &ProcessingSettings,
     ) -> DomainResult<PathBuf> {
         let output_format = settings.determine_output_format(image.format());
-        let file_stem = image.file_stem().ok_or_else(|| {
-            DomainError::InvalidFilePath(
-                "No file name".to_string(),
-            )
-        })?;
+        let file_stem = image
+            .file_stem()
+            .ok_or_else(|| DomainError::InvalidFilePath("No file name".to_string()))?;
 
         let output_filename = format!("{}.{}", file_stem, output_format.extension());
         let output_path = settings.output_directory().join(output_filename);

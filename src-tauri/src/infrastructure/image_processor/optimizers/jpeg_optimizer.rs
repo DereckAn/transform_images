@@ -1,7 +1,6 @@
 use crate::domain::value_objects::Quality;
 use crate::infrastructure::error::{InfraError, InfraResult};
 use mozjpeg::{ColorSpace, Compress, ScanMode};
-use std::io::Cursor;
 
 /// JPEG optimizer using mozjpeg
 pub struct JpegOptimizer;
@@ -33,9 +32,6 @@ impl JpegOptimizer {
         // Habilitar modo progresivo
         comp.set_progressive_mode();
 
-        // CORRECCIÓN: La API nueva requiere pasar el Vec directamente
-        let mut compressed_data = Vec::new();
-
         // start_compress ahora toma el writer como argumento
         let mut compressor = comp
             .start_compress(Vec::new())
@@ -45,10 +41,12 @@ impl JpegOptimizer {
         assert_eq!(rgb_data.len(), width * height * 3, "Invalid RGB data size");
 
         // Escribir datos por scanlines
-        compressor.write_scanlines(rgb_data);
+        compressor
+            .write_scanlines(rgb_data)
+            .map_err(|e| InfraError::JpegOptimizationFailed(e.to_string()))?;
 
         // Finalizar y obtener datos
-        compressed_data = compressor
+        let compressed_data = compressor
             .finish()
             .map_err(|e| InfraError::JpegOptimizationFailed(e.to_string()))?;
 

@@ -1,4 +1,4 @@
-use image::{DynamicImage, GenericImageView, ImageFormat as ImageCrateFormat};
+use image::{DynamicImage, ImageFormat as ImageCrateFormat};
 use std::fs;
 use std::io::Cursor;
 use std::path::Path;
@@ -11,6 +11,7 @@ use crate::infrastructure::error::{InfraError, InfraResult};
 use crate::infrastructure::image_processor::optimizers::{JpegOptimizer, PngOptimizer};
 use crate::infrastructure::image_processor::transformers::{Resizer, Rotator};
 use crate::infrastructure::image_processor::RawProcessor;
+use crate::infrastructure::metadata_cleaner::MetadataCleaner;
 
 /// Main image processor implementation
 pub struct ImageProcessorImpl {
@@ -19,6 +20,7 @@ pub struct ImageProcessorImpl {
     resizer: Resizer,
     rotator: Rotator,
     raw_processor: RawProcessor,
+    metadata_cleaner: MetadataCleaner,
 }
 
 impl ImageProcessorImpl {
@@ -29,6 +31,7 @@ impl ImageProcessorImpl {
             resizer: Resizer::new(),
             rotator: Rotator::new(),
             raw_processor: RawProcessor::new(),
+            metadata_cleaner: MetadataCleaner::new(),
         }
     }
 
@@ -44,7 +47,13 @@ impl ImageProcessorImpl {
         }
 
         // Use standard image decoder for other formats
-        image::open(path).map_err(|e| InfraError::ImageReadError(e.to_string()))
+        image::open(path).map_err(|e| {
+            InfraError::ImageReadError(format!(
+                "Failed to open image file '{}': {}",
+                path.display(),
+                e
+            ))
+        })
     }
 
     /// Convert domain ImageFormat to image crate format
@@ -65,32 +74,45 @@ impl ImageProcessorImpl {
         format: ImageFormat,
         settings: &ProcessingSettings,
     ) -> InfraResult<Vec<u8>> {
-        match format {
+        let mut output = match format {
             ImageFormat::Png => {
-                // Primero encodear a PNG
                 let mut bytes = Vec::new();
                 let mut cursor = Cursor::new(&mut bytes);
                 img.write_to(&mut cursor, ImageCrateFormat::Png)
-                    .map_err(|e| InfraError::EncodeError(e.to_string()))?;
-
-                // Luego optimizar con oxipng
-                self.png_optimizer.optimize(&bytes, settings.quality())
+                    .map_err(|e| {
+                        InfraError::EncodeError(format!(
+                            "Failed to encode PNG ({}x{}): {}",
+                            img.width(),
+                            img.height(),
+                            e
+                        ))
+                    })?;
+                self.png_optimizer.optimize(&bytes, settings.quality())?
             }
-            ImageFormat::Jpeg | ImageFormat::Raw => {
-                // Optimizar directamente con mozjpeg
-                // RAW siempre se convierte a JPEG (formato de solo lectura)
-                self.jpeg_optimizer
-                    .optimize_from_dynamic_image(img, settings.quality())
-            }
+            ImageFormat::Jpeg | ImageFormat::Raw => self
+                .jpeg_optimizer
+                .optimize_from_dynamic_image(img, settings.quality())?,
             ImageFormat::Webp | ImageFormat::Gif => {
-                // Por ahora, encoding básico sin optimización   especial
                 let mut bytes = Vec::new();
                 let mut cursor = Cursor::new(&mut bytes);
                 img.write_to(&mut cursor, Self::convert_format(format))
-                    .map_err(|e| InfraError::EncodeError(e.to_string()))?;
-                Ok(bytes)
+                    .map_err(|e| {
+                        InfraError::EncodeError(format!(
+                            "Failed to encode {:?} ({}x{}): {}",
+                            format,
+                            img.width(),
+                            img.height(),
+                            e
+                        ))
+                    })?;
+                bytes
             }
-        }
+        };
+
+        // ⚠️ NUEVO: Limpiar metadatos SIEMPRE
+        output = self.metadata_cleaner.strip_metadata(&output, format)?;
+
+        Ok(output)
     }
 
     /// Apply transformations to image
@@ -150,7 +172,8 @@ impl ImageProcessor for ImageProcessorImpl {
                 .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
 
             // Obtener dimensiones SIN decodificar
-            let dimensions_result = reader.into_dimensions()
+            let dimensions_result = reader
+                .into_dimensions()
                 .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
             let (width, height) = dimensions_result;
             Dimensions::new(width, height)?

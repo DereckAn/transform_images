@@ -5,7 +5,7 @@ use crate::application::dto::{
     BatchProcessRequest, ImageDto, ProcessedImageDto, ProcessingStatsDto, ProgressPayload,
 };
 use crate::application::state::AppState;
-use crate::domain::{Image, ImageProcessor};
+use crate::domain::ImageProcessor;
 use crate::infrastructure::file_system::FileHandler;
 use crate::infrastructure::image_processor::{ImageProcessorImpl, ProgressCallback};
 
@@ -49,7 +49,10 @@ pub async fn load_images_info(paths: Vec<String>) -> Result<Vec<ImageDto>, Strin
         if errors.is_empty() {
             return Err("No valid images found".to_string());
         } else {
-            return Err(format!("No valid images found. Errors:\n{}", errors.join("\n")));
+            return Err(format!(
+                "No valid images found. Errors:\n{}",
+                errors.join("\n")
+            ));
         }
     }
 
