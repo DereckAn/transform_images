@@ -1,3 +1,4 @@
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { ImageService } from "./app/services/ImageService";
@@ -16,7 +17,7 @@ let browseFolderBtn: HTMLButtonElement;
 let imagesList: HTMLElement;
 let imagesListView: HTMLElement;
 let imageCount: HTMLElement;
-let clearBtn: HTMLButtonElement;
+let clearAllBtn: HTMLButtonElement;
 let processBtn: HTMLButtonElement;
 let cancelBtn: HTMLButtonElement;
 let qualityInput: HTMLInputElement;
@@ -47,17 +48,20 @@ let rotationSelect: HTMLSelectElement;
 let flipHorizontalCheck: HTMLInputElement;
 let flipVerticalCheck: HTMLInputElement;
 let resetTransformationsBtn: HTMLButtonElement;
+let transformIcon: HTMLElement;
 
 async function initialize() {
   // Get DOM elements
   dropZone = document.getElementById("drop-zone")!;
   dropZoneView = document.getElementById("drop-zone-view")!;
   browsebtn = document.getElementById("browse-btn") as HTMLButtonElement;
-  browseFolderBtn = document.getElementById("browse-folder-btn") as HTMLButtonElement;
+  browseFolderBtn = document.getElementById(
+    "browse-folder-btn"
+  ) as HTMLButtonElement;
   imagesList = document.getElementById("images-list")!;
   imagesListView = document.getElementById("images-list-view")!;
   imageCount = document.getElementById("image-count")!;
-  clearBtn = document.getElementById("clear-btn") as HTMLButtonElement;
+  clearAllBtn = document.getElementById("clear-all-btn") as HTMLButtonElement;
   processBtn = document.getElementById("process-btn") as HTMLButtonElement;
   cancelBtn = document.getElementById("cancel-btn") as HTMLButtonElement;
   qualityInput = document.getElementById("quality") as HTMLInputElement;
@@ -84,16 +88,33 @@ async function initialize() {
   threadCount = document.getElementById("thread-count")!;
 
   // Get transformation elements
-  toggleTransformationsBtn = document.getElementById("toggle-transformations") as HTMLButtonElement;
+  toggleTransformationsBtn = document.getElementById(
+    "toggle-transformations"
+  ) as HTMLButtonElement;
   transformationsContent = document.getElementById("transformations-content")!;
-  resizeWidthInput = document.getElementById("resize-width") as HTMLInputElement;
-  resizeHeightInput = document.getElementById("resize-height") as HTMLInputElement;
-  preserveAspectRatioCheck = document.getElementById("preserve-aspect-ratio") as HTMLInputElement;
-  resizeFilterSelect = document.getElementById("resize-filter") as HTMLSelectElement;
+  resizeWidthInput = document.getElementById(
+    "resize-width"
+  ) as HTMLInputElement;
+  resizeHeightInput = document.getElementById(
+    "resize-height"
+  ) as HTMLInputElement;
+  preserveAspectRatioCheck = document.getElementById(
+    "preserve-aspect-ratio"
+  ) as HTMLInputElement;
+  resizeFilterSelect = document.getElementById(
+    "resize-filter"
+  ) as HTMLSelectElement;
   rotationSelect = document.getElementById("rotation") as HTMLSelectElement;
-  flipHorizontalCheck = document.getElementById("flip-horizontal") as HTMLInputElement;
-  flipVerticalCheck = document.getElementById("flip-vertical") as HTMLInputElement;
-  resetTransformationsBtn = document.getElementById("reset-transformations") as HTMLButtonElement;
+  flipHorizontalCheck = document.getElementById(
+    "flip-horizontal"
+  ) as HTMLInputElement;
+  flipVerticalCheck = document.getElementById(
+    "flip-vertical"
+  ) as HTMLInputElement;
+  resetTransformationsBtn = document.getElementById(
+    "reset-transformations"
+  ) as HTMLButtonElement;
+  transformIcon = document.getElementById("transform-icon") as HTMLElement;
 
   // Setup event listeners
   setupEventListeners();
@@ -139,12 +160,28 @@ function setupEventListeners() {
   );
 
   // Actions
-  clearBtn.addEventListener("click", handleClearImages);
-  processBtn.addEventListener("click", handleProcessImages);
-  cancelBtn.addEventListener("click", handleCancelProcessing);
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener("click", handleClearImages);
+  } else {
+    console.error("clearAllBtn not found!");
+  }
 
+  if (processBtn) {
+    processBtn.addEventListener("click", handleProcessImages);
+  } else {
+    console.error("processBtn not found!");
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", handleCancelProcessing);
+  } else {
+    console.error("cancelBtn not found!");
+  }
   // Transformations
-  toggleTransformationsBtn.addEventListener("click", handleToggleTransformations);
+  toggleTransformationsBtn.addEventListener(
+    "click",
+    handleToggleTransformations
+  );
   resizeWidthInput.addEventListener("input", handleResizeChange);
   resizeHeightInput.addEventListener("input", handleResizeChange);
   preserveAspectRatioCheck.addEventListener("change", handleResizeChange);
@@ -209,12 +246,40 @@ async function handleBrowseClick() {
         {
           name: "Images",
           extensions: [
-            "png", "jpg", "jpeg", "webp", "gif",
+            "png",
+            "jpg",
+            "jpeg",
+            "webp",
+            "gif",
             // RAW formats
-            "arw", "cr2", "cr3", "nef", "nrw", "dng", "raf", "orf",
-            "rw2", "pef", "srw", "x3f", "raw", "rwl", "mrw", "erf",
-            "3fr", "ari", "srf", "sr2", "bay", "crw", "iiq",
-            "k25", "kdc", "mef", "mos", "r3d"
+            "arw",
+            "cr2",
+            "cr3",
+            "nef",
+            "nrw",
+            "dng",
+            "raf",
+            "orf",
+            "rw2",
+            "pef",
+            "srw",
+            "x3f",
+            "raw",
+            "rwl",
+            "mrw",
+            "erf",
+            "3fr",
+            "ari",
+            "srf",
+            "sr2",
+            "bay",
+            "crw",
+            "iiq",
+            "k25",
+            "kdc",
+            "mef",
+            "mos",
+            "r3d",
           ],
         },
       ],
@@ -309,13 +374,21 @@ function handleOverwriteExistingChange() {
 // Transformation handlers
 function handleToggleTransformations() {
   const isHidden = transformationsContent.style.display === "none";
-  transformationsContent.style.display = isHidden ? "block" : "none";
-  toggleTransformationsBtn.textContent = isHidden ? "Hide" : "Show";
+  transformationsContent.style.display = isHidden ? "flex" : "none";
+  if (transformIcon) {
+    transformIcon.style.transform = isHidden
+      ? "rotate(0deg)"
+      : "rotate(-90deg)";
+  }
 }
 
 function handleResizeChange() {
-  const width = resizeWidthInput.value ? parseInt(resizeWidthInput.value) : null;
-  const height = resizeHeightInput.value ? parseInt(resizeHeightInput.value) : null;
+  const width = resizeWidthInput.value
+    ? parseInt(resizeWidthInput.value)
+    : null;
+  const height = resizeHeightInput.value
+    ? parseInt(resizeHeightInput.value)
+    : null;
   const preserveAspect = preserveAspectRatioCheck.checked;
   const filter = resizeFilterSelect.value;
 
@@ -349,6 +422,31 @@ function handleResetTransformations() {
 function handleClearImages() {
   appState.clearImages();
   updateUI();
+
+  // Show empty state, hide images section
+  const dropZoneView = document.getElementById("drop-zone-view");
+  const imagesListView = document.getElementById("images-list-view");
+
+  if (dropZoneView && imagesListView) {
+    dropZoneView.style.display = "flex";
+    imagesListView.style.display = "none";
+  }
+}
+
+function handleRemoveImage(index: number) {
+  appState.removeImage(index);
+  updateUI();
+
+  // If no images left, show empty state
+  if (appState.images.length === 0) {
+    const dropZoneView = document.getElementById("drop-zone-view");
+    const imagesListView = document.getElementById("images-list-view");
+
+    if (dropZoneView && imagesListView) {
+      dropZoneView.style.display = "flex";
+      imagesListView.style.display = "none";
+    }
+  }
 }
 
 async function handleProcessImages() {
@@ -371,7 +469,10 @@ async function handleProcessImages() {
         : undefined,
     };
 
-    console.log("Processing with transformations:", request.transformationOptions);
+    console.log(
+      "Processing with transformations:",
+      request.transformationOptions
+    );
 
     const results = await imageService.processImages(request);
     displayResults(results);
@@ -396,6 +497,93 @@ async function handleCancelProcessing() {
   }
 }
 
+function renderImagesList() {
+  imagesList.innerHTML = "";
+  appState.images.forEach((img, index) => {
+    const isRaw = img.format.toLowerCase() === "raw";
+
+    // Convert file path to URL that browser can load
+    const imageUrl = convertFileSrc(img.path);
+
+    const item = document.createElement("div");
+    item.className =
+      "relative group rounded-xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all";
+
+    item.innerHTML = `
+        <div class="aspect-square bg-slate-800 flex items-center justify-center relative overflow-hidden">
+          ${
+            isRaw
+              ? // RAW files: Show icon (can't preview RAW directly in  browser)
+                `<div class="text-4xl">RAW IMAGE</div>`
+              : // Standard formats: Show actual image preview
+                `<img
+                  src="${imageUrl}"
+                  alt="${getFileName(img.path)}"
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                  onerror="this.style.display='none';
+                    this.nextElementSibling.style.display='flex';"
+                />
+                <div class="hidden w-full h-full items-center justify-center text-4xl">
+                    RAW IMAGE
+                </div>`
+          }
+
+          <!-- Remove button (shows on hover) -->
+          <button class="remove-image-btn absolute top-2 right-2 w-6 h-6
+            rounded-full bg-red-600/90 hover:bg-red-700 text-white flex
+            items-center justify-center opacity-0 group-hover:opacity-100
+            transition-all hover:scale-110 z-10"
+            data-index="${index}"
+            title="Remove image"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="p-3">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <p class="text-sm font-semibold text-white truncate flex-1" title="${getFileName(
+              img.path
+            )}">
+              ${getFileName(img.path)}
+            </p>
+            ${
+              isRaw
+                ? '<span class="badge-raw">RAW</span>'
+                : '<span class="badge-standard">' +
+                  img.format.toUpperCase() +
+                  "</span>"
+            }
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span>${img.width}×${img.height}</span>
+            <span>•</span>
+            <span>${formatBytes(img.sizeBytes)}</span>
+          </div>
+
+          <!-- Progress bar for this image (hidden initially) -->
+          <div class="image-progress mt-2 h-1 bg-slate-800 rounded-full overflow-hidden" data-index="${index}" style="display: none;">
+            <div class="h-full bg-primary transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+      `;
+
+    imagesList.appendChild(item);
+  });
+
+  // Add click handlers for remove buttons
+  const removeButtons = imagesList.querySelectorAll(".remove-image-btn");
+  removeButtons.forEach((button) => {
+    button.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const index = parseInt(
+        (e.target as HTMLElement).getAttribute("data-index") || "0"
+      );
+      handleRemoveImage(index);
+    });
+  });
+}
+
 // UI Updates
 function updateUI() {
   // Update image count
@@ -412,28 +600,6 @@ function updateUI() {
   }
 
   updateProcessButton();
-}
-
-function renderImagesList() {
-  // Clear existing items
-  imagesList.innerHTML = "";
-
-  // Add image items
-  appState.images.forEach((img) => {
-    const item = document.createElement("div");
-    item.className = "image-item";
-    item.innerHTML = `
-        <div class="image-info">
-          <div class="image-name">${getFileName(img.path)}</div>
-          <div class="image-meta">
-            <span>${img.format.toUpperCase()}</span>
-            <span>${img.width}x${img.height}</span>
-            <span>${formatBytes(img.sizeBytes)}</span>
-          </div>
-        </div>
-      `;
-    imagesList.appendChild(item);
-  });
 }
 
 function updateProcessButton() {
@@ -464,7 +630,6 @@ function updateProgress(
 function displayResults(results: ProcessedImage[]) {
   resultsSection.style.display = "block";
 
-  // Calculate stats
   const successful = results.filter((r) => r.success).length;
   const failed = results.length - successful;
   const totalSaved = results
@@ -477,21 +642,27 @@ function displayResults(results: ProcessedImage[]) {
 
   // Display stats
   resultsStats.innerHTML = `
-      <div class="stat-card">
-        <div class="stat-value">${successful}</div>
-        <div class="stat-label">Successful</div>
+      <div class="bg-slate-800 p-4 rounded-lg text-center">
+        <p class="text-2xl font-bold text-white">${successful}</p>
+        <p class="text-xs text-slate-400 uppercase tracking-wider 
+  mt-1">Successful</p>
       </div>
-      <div class="stat-card">
-        <div class="stat-value">${failed}</div>
-        <div class="stat-label">Failed</div>
+      <div class="bg-slate-800 p-4 rounded-lg text-center">
+        <p class="text-2xl font-bold text-red-400">${failed}</p>
+        <p class="text-xs text-slate-400 uppercase tracking-wider 
+  mt-1">Failed</p>
       </div>
-      <div class="stat-card">
-        <div class="stat-value">${formatBytes(totalSaved)}</div>
-        <div class="stat-label">Space Saved</div>
+      <div class="bg-slate-800 p-4 rounded-lg text-center">
+        <p class="text-2xl font-bold 
+  text-green-400">${formatBytes(totalSaved)}</p>
+        <p class="text-xs text-slate-400 uppercase tracking-wider 
+  mt-1">Space Saved</p>
       </div>
-      <div class="stat-card">
-        <div class="stat-value">${avgCompression.toFixed(1)}%</div>
-        <div class="stat-label">Avg Compression</div>
+      <div class="bg-slate-800 p-4 rounded-lg text-center">
+        <p class="text-2xl font-bold 
+  text-blue-400">${avgCompression.toFixed(1)}%</p>
+        <p class="text-xs text-slate-400 uppercase tracking-wider 
+  mt-1">Avg Compression</p>
       </div>
     `;
 
@@ -499,24 +670,34 @@ function displayResults(results: ProcessedImage[]) {
   resultsList.innerHTML = "";
   results.forEach((result) => {
     const item = document.createElement("div");
-    item.className = `result-item ${result.success ? "success" : "error"}`;
+    item.className = `p-3 rounded-lg border ${
+      result.success
+        ? "bg-green-500/10 border-green-500/30"
+        : "bg-red-500/10 border-red-500/30"
+    }`;
+
     item.innerHTML = `
-        <div 
-  class="image-name">${getFileName(result.originalPath)}</div>
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-white truncate flex-1">${getFileName(
+            result.originalPath
+          )}</p>
+          ${
+            result.success
+              ? `<span class="text-xs font-semibold text-green-400">${result.compressionRatio.toFixed(
+                  1
+                )}% smaller</span>`
+              : `<span class="text-xs font-semibold text-red-400">Failed</span>`
+          }
+        </div>
         ${
           result.success
-            ? `
-          <div class="image-meta">
-            <span>${formatBytes(result.originalSize)} → 
-  ${formatBytes(result.outputSize)}</span>
-            <span>${result.compressionRatio.toFixed(1)}% 
-  smaller</span>
-          </div>
-        `
-            : `<div style="color: var(--danger); margin-top: 
-  0.5rem;">${result.errorMessage}</div>`
+            ? `<p class="text-xs text-slate-400 mt-1">${formatBytes(
+                result.originalSize
+              )} → ${formatBytes(result.outputSize)}</p>`
+            : `<p class="text-xs text-red-400 mt-1">${result.errorMessage}</p>`
         }
       `;
+
     resultsList.appendChild(item);
   });
 }

@@ -32,8 +32,14 @@ export class AppState {
     this.images.push(...newImages);
   }
 
-  clearImages() {
+  clearImages(): void {
     this.images = [];
+  }
+
+  removeImage(index: number): void {
+    if (index >= 0 && index < this.images.length) {
+      this.images.splice(index, 1);
+    }
   }
 
   setProcessing(value: boolean) {
@@ -75,7 +81,12 @@ export class AppState {
   }
 
   // Transformation methods
-  setResize(width: number | null, height: number | null, preserveAspectRatio: boolean, filter: string) {
+  setResize(
+    width: number | null,
+    height: number | null,
+    preserveAspectRatio: boolean,
+    filter: string
+  ) {
     if (width && height) {
       this.transformations.resize = {
         width,

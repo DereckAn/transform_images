@@ -158,12 +158,16 @@ impl ImageProcessor for ImageProcessorImpl {
         let dimensions = if format.is_raw() {
             // Para archivos RAW: decodificar para obtener dimensiones
             // No hay forma de obtener dimensiones sin decodificar en RAW
-            let dynamic_img = self
-                .raw_processor
-                .process_raw(path)
-                .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
+            // let dynamic_img = self
+            //     .raw_processor
+            //     .process_raw(path)
+            //     .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
 
-            let (width, height) = (dynamic_img.width(), dynamic_img.height());
+            // let (width, height) = (dynamic_img.width(), dynamic_img.height());
+            // Dimensions::new(width, height)?
+
+            let (width, height) = RawProcessor::get_raw_metadata(&path)
+                .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
             Dimensions::new(width, height)?
         } else {
             // Para formatos estándar: OPTIMIZACIÓN - leer SOLO metadata sin decodificar

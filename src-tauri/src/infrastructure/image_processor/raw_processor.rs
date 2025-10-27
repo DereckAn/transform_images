@@ -40,13 +40,9 @@ impl RawProcessor {
         }
 
         // Convertir path a CString (para FFI C)
-        let path_str = path.to_str().ok_or_else(|| {
-            InfraError::ImageReadError(
-                "Invalid 
-  file path"
-                    .to_string(),
-            )
-        })?;
+        let path_str = path
+            .to_str()
+            .ok_or_else(|| InfraError::ImageReadError("Invalid file path".to_string()))?;
         let c_path = CString::new(path_str)
             .map_err(|e| InfraError::ImageReadError(format!("Invalid path: {}", e)))?;
 
@@ -55,9 +51,7 @@ impl RawProcessor {
             let data = libraw_sys::libraw_init(0);
             if data.is_null() {
                 return Err(InfraError::DecodeError(
-                    "Failed to 
-  initialize LibRaw"
-                        .to_string(),
+                    "Failed to initialize LibRaw".to_string(),
                 ));
             }
 
@@ -117,6 +111,50 @@ impl RawProcessor {
         }
     }
 
+    /// Fast metadata extraction from RAW files WITHOUT decoding pixels
+    /// This is used during image selection to show file info quickly
+    pub fn get_raw_metadata(path: &Path) -> InfraResult<(u32, u32)> {
+        use std::os::raw::c_char;
+
+        // Convert path to C string for FFI
+        let path_str = path
+            .to_str()
+            .ok_or_else(|| InfraError::ImageReadError("Invalid path".to_string()))?;
+        let c_path = CString::new(path_str)
+            .map_err(|e| InfraError::ImageReadError(format!("Path conversion failed: {}", e)))?;
+
+        unsafe {
+            // Initialize LibRaw handle
+            let raw = libraw_sys::libraw_init(0);
+            if raw.is_null() {
+                return Err(InfraError::DecodeError(
+                    "Failed to initialize LibRaw".to_string(),
+                ));
+            }
+
+            // Open file but DON'T unpack pixel data
+            let ret = libraw_sys::libraw_open_file(raw, c_path.as_ptr() as *const c_char);
+            if ret != 0 {
+                let error_msg = libraw_error_message(ret);
+                libraw_sys::libraw_close(raw);
+                return Err(InfraError::ImageReadError(format!(
+                    "Failed to open RAW file: {}",
+                    error_msg
+                )));
+            }
+
+            // Read metadata from imgdata struct
+            let imgdata = &*raw;
+            let width = imgdata.sizes.width as u32;
+            let height = imgdata.sizes.height as u32;
+
+            // Clean up
+            libraw_sys::libraw_close(raw);
+
+            Ok((width, height))
+        }
+    }
+
     /// Convertir libraw_processed_image_t a DynamicImage
     unsafe fn convert_libraw_to_dynamic_image(
         &self,
@@ -131,8 +169,7 @@ impl RawProcessor {
         // Verificar que es RGB (3 canales)
         if colors != 3 {
             return Err(InfraError::DecodeError(format!(
-                "Unsupported color format: {} channels (expected 
-  3)",
+                "Unsupported color format: {} channels (expected 3)",
                 colors
             )));
         }

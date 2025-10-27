@@ -1,263 +1,428 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transform Images - Image Optimizer</title>
+
+    <!-- Styles (Tailwind will be processed by Vite) -->
     <link rel="stylesheet" href="/src/styles.css" />
-    <meta
-      name="viewport"
-      content="width=device-width, 
-  initial-scale=1.0"
-    />
-    <title>Transform Images</title>
+
+    <!-- Main TypeScript -->
     <script type="module" src="/src/main.ts" defer></script>
   </head>
 
-  <body>
-    <div class="app-container">
-      <!-- Header -->
-      <header class="app-header">
-        <h1>Transform Images</h1>
-        <p class="subtitle">Image Optimization & Transformation</p>
-      </header>
-
-      <!-- Main Content -->
-      <main class="main-content">
-        <!-- Settings Panel -->
-        <section class="settings-panel">
-          <h3>Settings</h3>
-
-          <div class="settings-grid">
-            <!-- Quality -->
-            <div class="setting-group">
-              <label for="quality"
-                >Quality: <span id="quality-value">85</span>%</label
-              >
-              <input type="range" id="quality" min="1" max="100" value="85" />
-            </div>
-
-            <!-- Output Format -->
-            <div class="setting-group">
-              <label for="output-format">Output Format</label>
-              <select id="output-format">
-                <option value="">Keep Original</option>
-                <option value="png">PNG</option>
-                <option value="jpg">JPEG</option>
-                <option value="webp">WebP</option>
-              </select>
-            </div>
-
-            <!-- Output Directory -->
-            <div class="setting-group full-width">
-              <label for="output-dir">Output Directory</label>
-              <div class="input-with-button">
-                <input
-                  type="text"
-                  id="output-dir"
-                  placeholder="Select output directory..."
-                  readonly
-                />
-                <button class="btn btn-secondary" id="select-dir-btn">
-                  Browse
-                </button>
+  <body class="bg-background-dark font-display text-slate-200 scrollbar-thin">
+    <div class="relative flex h-screen w-full">
+      <!-- ==================== SIDEBAR ==================== -->
+      <aside
+        class="flex w-100 flex-col border-r border-slate-800 bg-background-dark/50"
+      >
+        <div class="flex h-full flex-col justify-between p-4">
+          <!-- Header -->
+          <div class="flex flex-col gap-6">
+            <div class="flex items-center gap-3 px-2">
+              <!-- Reemplazar el div del emoji por una imagen -->
+              <img
+                src="/src/assets/patoblack.png"
+                alt="Transform Images Logo"
+                class="size-16 rounded-full object-cover"
+              />
+              <div class="flex flex-col">
+                <h1 class="text-lg font-bold leading-normal text-white">
+                  Transform Images
+                </h1>
+                <p class="text-sm font-normal leading-normal text-slate-400">
+                  Image Optimizer
+                </p>
               </div>
             </div>
 
-            <!-- Preserve Metadata -->
-            <div class="setting-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="preserve-metadata" />
-                <span>Preserve Metadata</span>
-              </label>
-            </div>
-
-            <!-- Overwrite Existing -->
-            <div class="setting-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="overwrite-existing" />
-                <span>Overwrite Existing Files</span>
-              </label>
-            </div>
-          </div>
-        </section>
-
-        <!-- Transformations Panel -->
-        <section class="transformations-panel">
-          <div class="section-header-collapsible">
-            <h3>Transformations (Optional)</h3>
-            <button class="btn btn-small" id="toggle-transformations">
-              Show
-            </button>
-          </div>
-
-          <div class="transformations-content" id="transformations-content" style="display: none;">
-            <div class="settings-grid">
-              <!-- Resize -->
-              <div class="setting-group">
-                <label for="resize-width">Width (px)</label>
-                <input type="number" id="resize-width" min="1" placeholder="Original" />
-              </div>
-
-              <div class="setting-group">
-                <label for="resize-height">Height (px)</label>
-                <input type="number" id="resize-height" min="1" placeholder="Original" />
-              </div>
-
-              <div class="setting-group">
-                <label class="checkbox-label">
-                  <input type="checkbox" id="preserve-aspect-ratio" checked />
-                  <span>Preserve Aspect Ratio</span>
-                </label>
-              </div>
-
-              <div class="setting-group">
-                <label for="resize-filter">Resize Filter</label>
-                <select id="resize-filter">
-                  <option value="Lanczos3">Lanczos3 (Best Quality)</option>
-                  <option value="CatmullRom">CatmullRom (Good)</option>
-                  <option value="Gaussian">Gaussian</option>
-                  <option value="Triangle">Triangle (Fast)</option>
-                  <option value="Nearest">Nearest (Fastest)</option>
-                </select>
-              </div>
-
-              <!-- Rotation -->
-              <div class="setting-group">
-                <label for="rotation">Rotation</label>
-                <select id="rotation">
-                  <option value="0">No Rotation</option>
-                  <option value="90">90° Clockwise</option>
-                  <option value="180">180°</option>
-                  <option value="270">270° Clockwise</option>
-                </select>
-              </div>
-
-              <!-- Flips -->
-              <div class="setting-group">
-                <label class="checkbox-label">
-                  <input type="checkbox" id="flip-horizontal" />
-                  <span>Flip Horizontal</span>
-                </label>
-              </div>
-
-              <div class="setting-group">
-                <label class="checkbox-label">
-                  <input type="checkbox" id="flip-vertical" />
-                  <span>Flip Vertical</span>
-                </label>
-              </div>
-
-              <div class="setting-group">
-                <button class="btn btn-secondary" id="reset-transformations">
-                  Reset All Transformations
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ✅ NUEVO: Contenedor único que alterna entre Drop Zone
-  e Images List -->
-        <section class="images-container">
-          <!-- Drop Zone (se muestra cuando no hay imágenes) -->
-          <div class="drop-zone-view" id="drop-zone-view">
-            <div class="drop-zone" id="drop-zone">
-              <div class="drop-zone-content">
-                <svg
-                  class="drop-icon"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
+            <!-- Settings Section -->
+            <div
+              class="flex flex-col gap-4 overflow-y-auto scrollbar-thin pr-2"
+              style="max-height: calc(100vh - 250px)"
+            >
+              <!-- Optimization Settings (Always Visible) -->
+              <div class="flex flex-col gap-4">
+                <h3
+                  class="text-sm font-semibold text-red-400 uppercase tracking-wider"
                 >
-                  <path
-                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0
-  1-2-2v-4"
-                  ></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-                <h2>Drag & Drop Images or Folders</h2>
-                <p>or click to browse</p>
-                <div style="display: flex; gap: 1rem; justify-content: center;">
-                  <button class="btn btn-primary" id="browse-btn">
-                    Browse Files
-                  </button>
-                  <button class="btn btn-secondary" id="browse-folder-btn">
-                    Browse Folder
+                  Optimization
+                </h3>
+
+                <!-- Quality Slider -->
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-slate-200"
+                      >Quality</label
+                    >
+                    <span id="quality-value" class="text-sm text-slate-400"
+                      >85%</span
+                    >
+                  </div>
+                  <input
+                    type="range"
+                    id="quality"
+                    min="1"
+                    max="100"
+                    value="85"
+                    class="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-primary"
+                  />
+                </div>
+
+                <!-- Output Format -->
+                <label class="flex flex-col gap-2">
+                  <span class="text-sm font-medium text-slate-200">Format</span>
+                  <div class="relative">
+                    <select
+                      id="output-format"
+                      class="w-full appearance-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2.5 pr-10 text-sm text-slate-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="">Keep Original</option>
+                      <option value="jpeg">JPEG</option>
+                      <option value="png">PNG</option>
+                      <option value="webp">WebP</option>
+                    </select>
+                    <span
+                      class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      >▼</span
+                    >
+                  </div>
+                </label>
+
+                <!-- Output Directory -->
+                <label class="flex flex-col gap-2">
+                  <span class="text-sm font-medium text-slate-200"
+                    >Output Directory</span
+                  >
+                  <div class="flex gap-2">
+                    <input
+                      type="text"
+                      id="output-dir"
+                      readonly
+                      placeholder="Same as source"
+                      class="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    <button
+                      id="select-dir-btn"
+                      class="px-3 py-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-colors text-sm font-medium"
+                    >
+                      Browse
+                    </button>
+                  </div>
+                </label>
+
+                <!-- Checkboxes -->
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="preserve-metadata"
+                    class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary focus:ring-2 focus:ring-primary/20 focus:ring-offset-0"
+                  />
+                  <span class="text-sm text-slate-200"
+                    >Preserve EXIF metadata</span
+                  >
+                </label>
+
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="overwrite-existing"
+                    class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary focus:ring-2 focus:ring-primary/20 focus:ring-offset-0"
+                  />
+                  <span class="text-sm text-slate-200"
+                    >Overwrite existing files</span
+                  >
+                </label>
+              </div>
+
+              <!-- Divider -->
+              <div class="border-t border-slate-800"></div>
+
+              <!-- Transformations (Collapsible) -->
+              <div class="flex flex-col gap-4">
+                <button
+                  id="toggle-transformations"
+                  class="flex items-center justify-between text-sm font-semibold text-red-400 uppercase tracking-wider hover:text-slate-300 transition-colors"
+                >
+                  <span>🔄 Transformations</span>
+                  <span
+                    id="transform-icon"
+                    class="transform transition-transform"
+                    >▼</span
+                  >
+                </button>
+
+                <div
+                  id="transformations-content"
+                  class="flex flex-col gap-4"
+                  style="display: none"
+                >
+                  <!-- Resize -->
+                  <div class="flex gap-2">
+                    <label class="flex-1 flex flex-col gap-2">
+                      <span class="text-sm font-medium text-slate-200"
+                        >Width</span
+                      >
+                      <input
+                        type="number"
+                        id="resize-width"
+                        placeholder="Auto"
+                        class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </label>
+                    <label class="flex-1 flex flex-col gap-2">
+                      <span class="text-sm font-medium text-slate-200"
+                        >Height</span
+                      >
+                      <input
+                        type="number"
+                        id="resize-height"
+                        placeholder="Auto"
+                        class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </label>
+                  </div>
+
+                  <label class="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="preserve-aspect-ratio"
+                      checked
+                      class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary focus:ring-2 focus:ring-primary/20 focus:ring-offset-0"
+                    />
+                    <span class="text-sm text-slate-200"
+                      >Maintain aspect ratio</span
+                    >
+                  </label>
+
+                  <!-- Filter -->
+                  <label class="flex flex-col gap-2">
+                    <span class="text-sm font-medium text-slate-200"
+                      >Resize Filter</span
+                    >
+                    <select
+                      id="resize-filter"
+                      class="w-full appearance-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="Lanczos3">Lanczos3 (Best)</option>
+                      <option value="CatmullRom">CatmullRom</option>
+                      <option value="Gaussian">Gaussian</option>
+                      <option value="Triangle">Triangle</option>
+                      <option value="Nearest">Nearest (Fastest)</option>
+                    </select>
+                  </label>
+
+                  <!-- Rotation -->
+                  <label class="flex flex-col gap-2">
+                    <span class="text-sm font-medium text-slate-200"
+                      >Rotate</span
+                    >
+                    <select
+                      id="rotation"
+                      class="w-full appearance-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="0">None</option>
+                      <option value="90">90°</option>
+                      <option value="180">180°</option>
+                      <option value="270">270°</option>
+                    </select>
+                  </label>
+
+                  <!-- Flip -->
+                  <label class="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="flip-horizontal"
+                      class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary focus:ring-2 focus:ring-primary/20 focus:ring-offset-0"
+                    />
+                    <span class="text-sm text-slate-200">Flip Horizontal</span>
+                  </label>
+
+                  <label class="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="flip-vertical"
+                      class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary focus:ring-2 focus:ring-primary/20 focus:ring-offset-0"
+                    />
+                    <span class="text-sm text-slate-200">Flip Vertical</span>
+                  </label>
+
+                  <!-- Reset Button -->
+                  <button
+                    id="reset-transformations"
+                    class="w-full px-4 py-2 rounded-lg bg-slate-700 text-slate-200 text-sm font-medium hover:bg-slate-600 transition-colors"
+                  >
+                    Reset Transformations
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Images List (se muestra cuando hay imágenes) -->
+          <!-- Action Buttons -->
+          <div class="flex flex-col gap-2 pt-4 border-t border-slate-800">
+            <button
+              id="process-btn"
+              disabled
+              class="w-full px-4 py-3 rounded-lg bg-primary text-white text-sm font-bold tracking-wide hover:bg-black/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              ▶️ Start Processing
+            </button>
+
+            <button
+              id="cancel-btn"
+              style="display: none"
+              class="w-full px-4 py-3 rounded-lg bg-red-600 text-white text-sm font-bold tracking-wide hover:bg-red-700 transition-colors"
+            >
+              Cancel
+            </button>
+
+            <button
+              id="clear-all-btn"
+              class="w-full px-4 py-2 rounded-lg bg-transparent text-slate-400 text-sm font-medium hover:bg-slate-800 transition-colors"
+            >
+              Clear All
+            </button>
+
+            <p class="text-xs text-center text-slate-500 pt-2">
+              Threads: <span id="thread-count" class="font-semibold">0</span>
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ==================== MAIN CONTENT AREA 
+  ==================== -->
+      <main class="flex-1 p-8 bg-background-dark overflow-hidden">
+        <div class="h-full w-full flex flex-col">
+          <!-- Empty State (No images) -->
           <div
-            class="images-list-view"
+            id="drop-zone-view"
+            class="flex items-center justify-center h-full"
+          >
+            <div id="drop-zone" class="w-full max-w-2xl">
+              <div
+                class="flex flex-col items-center gap-6 rounded-xl border-2 border-dashed border-slate-700 px-6 py-20 hover:border-slate-600 hover:bg-slate-900/20 transition-all cursor-pointer"
+              >
+                <div
+                  class="flex items-center justify-center size-16 rounded-full bg-primary/20"
+                >
+                  <span class="text-4xl">📤</span>
+                </div>
+                <div class="flex flex-col items-center gap-2">
+                  <p class="text-xl font-bold text-white text-center">
+                    Upload Images
+                  </p>
+                  <p class="text-sm text-slate-400 text-center">
+                    Drop your images here or click to browse files from your
+                    computer. Supports PNG, JPEG, WebP, and 30+ RAW formats.
+                  </p>
+                </div>
+                <div class="flex gap-3">
+                  <button
+                    id="browse-btn"
+                    class="px-6 py-3 rounded-lg bg-slate-800 text-slate-200 text-sm font-bold hover:bg-slate-700 transition-colors"
+                  >
+                    📄 Browse Files
+                  </button>
+                  <button
+                    id="browse-folder-btn"
+                    class="px-6 py-3 rounded-lg bg-slate-800 text-slate-200 text-sm font-bold hover:bg-slate-700 transition-colors"
+                  >
+                    📁 Browse Folder
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Images List View (When images selected) -->
+          <div
             id="images-list-view"
+            class="h-full flex flex-col gap-4"
             style="display: none"
           >
-            <div class="section-header">
-              <h3>Images (<span id="image-count">0</span>)</h3>
-              <button class="btn btn-small btn-danger" id="clear-btn">
-                Clear All
-              </button>
+            <!-- Header with count -->
+            <div
+              class="flex items-center justify-between pb-4 border-b border-slate-800"
+            >
+              <div class="flex items-center gap-3">
+                <h2 class="text-xl font-bold text-white">Selected Images</h2>
+                <span
+                  id="image-count"
+                  class="px-3 py-1 rounded-full bg-slate-800 text-sm font-semibold text-slate-300"
+                >
+                  0
+                </span>
+              </div>
             </div>
 
-            <div class="images-list" id="images-list"></div>
-          </div>
-        </section>
+            <!-- Image Grid -->
+            <div
+              id="images-list"
+              class="flex-1 overflow-y-auto scrollbar-thin grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4"
+              style="max-height: calc(100vh)"
+            >
+              <!-- Images will be added here dynamically -->
+            </div>
 
-        <!-- Progress Section -->
-        <section
-          class="progress-section"
-          id="progress-section"
-          style="display: none"
-        >
-          <h3>Processing</h3>
-          <div class="progress-info">
-            <span id="progress-text">Processing: 0 / 0</span>
-            <span id="progress-percent">0%</span>
-          </div>
-          <div class="progress-bar-container">
-            <div class="progress-bar" id="progress-bar"></div>
-          </div>
-          <p class="current-file" id="current-file"></p>
-        </section>
+            <!-- Progress Section -->
+            <div
+              id="progress-section"
+              class="p-4 rounded-xl bg-slate-900/50 border border-slate-800"
+              style="display: none"
+            >
+              <div class="flex items-center justify-between mb-2">
+                <p
+                  id="progress-text"
+                  class="text-sm font-medium text-slate-300"
+                >
+                  Processing...
+                </p>
+                <p
+                  id="progress-percent"
+                  class="text-sm font-semibold text-slate-300"
+                >
+                  0%
+                </p>
+              </div>
+              <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  id="progress-bar"
+                  class="h-full bg-primary transition-all duration-300"
+                  style="width: 0%"
+                ></div>
+              </div>
+              <p id="current-file" class="text-xs text-slate-500 mt-2 truncate">
+                Ready...
+              </p>
+            </div>
 
-        <!-- Results Section -->
-        <section
-          class="results-section"
-          id="results-section"
-          style="display: none"
-        >
-          <h3>Results</h3>
-          <div class="results-stats" id="results-stats"></div>
-          <div class="results-list" id="results-list"></div>
-        </section>
-
-        <!-- Action Buttons -->
-        <section class="actions-section">
-          <button class="btn btn-primary btn-large" id="process-btn" disabled>
-            Process Images
-          </button>
-          <button
-            class="btn btn-danger btn-large"
-            id="cancel-btn"
-            style="display: none"
-          >
-            Cancel
-          </button>
-        </section>
+            <!-- Results Section -->
+            <div
+              id="results-section"
+              class="p-6 rounded-xl bg-slate-900/50 border border-slate-800"
+              style="display: none"
+            >
+              <h3 class="text-lg font-bold text-white mb-4">✅ Results</h3>
+              <div
+                id="results-stats"
+                class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4"
+              >
+                <!-- Stats will be added here -->
+              </div>
+              <div
+                id="results-list"
+                class="max-h-60 overflow-y-auto scrollbar-thin space-y-2"
+              >
+                <!-- Result items will be added here -->
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
-
-      <!-- Footer -->
-      <footer class="app-footer">
-        <p>
-          Built with Tauri + Rust • Optimal Threads:
-          <span id="thread-count">0</span>
-        </p>
-      </footer>
     </div>
   </body>
 </html>
