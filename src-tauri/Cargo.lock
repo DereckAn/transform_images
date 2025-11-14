@@ -3,6 +3,31 @@
 version = 4
 
 [[package]]
+name = "QuakImages"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "image",
+ "img-parts",
+ "libraw-sys",
+ "mockall",
+ "mozjpeg",
+ "oxipng",
+ "parking_lot",
+ "rayon",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-opener",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "walkdir",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4686,31 +4711,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9d12581f227e93f094d3af2ae690a574abb8a2b9b7a96e7cfe9647b2b617678"
 dependencies = [
  "once_cell",
-]
-
-[[package]]
-name = "transform-images"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "image",
- "img-parts",
- "libraw-sys",
- "mockall",
- "mozjpeg",
- "oxipng",
- "parking_lot",
- "rayon",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-opener",
- "tempfile",
- "thiserror 1.0.69",
- "tokio",
- "walkdir",
 ]
 
 [[package]]

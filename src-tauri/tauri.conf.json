@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tranform-images",
-  "version": "0.1.0",
-  "identifier": "com.laruina.tranform-images",
+  "productName": "quakimages",
+  "version": "0.3.0",
+  "identifier": "com.laruina.quakimages",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Transform Images",
+        "title": "Quak Images",
         "width": 1200,
         "height": 900,
         "minWidth": 800,

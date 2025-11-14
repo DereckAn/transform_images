@@ -1,6 +1,6 @@
 
 [package]
-name = "transform-images"
+name = "QuakImages"
 version = "0.1.0"
 description = "Professional image transformation and optimization tool"
 authors = ["laruina"]
