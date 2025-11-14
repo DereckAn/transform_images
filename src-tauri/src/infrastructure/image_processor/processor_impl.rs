@@ -8,7 +8,9 @@ use crate::domain::{
     Transformation,
 };
 use crate::infrastructure::error::{InfraError, InfraResult};
-use crate::infrastructure::image_processor::optimizers::{JpegOptimizer, PngOptimizer};
+use crate::infrastructure::image_processor::optimizers::{
+    JpegOptimizer, PngOptimizer, WebpOptimizer,
+};
 use crate::infrastructure::image_processor::transformers::{Resizer, Rotator};
 use crate::infrastructure::image_processor::RawProcessor;
 use crate::infrastructure::metadata_cleaner::MetadataCleaner;
@@ -17,6 +19,7 @@ use crate::infrastructure::metadata_cleaner::MetadataCleaner;
 pub struct ImageProcessorImpl {
     png_optimizer: PngOptimizer,
     jpeg_optimizer: JpegOptimizer,
+    webp_optimizer: WebpOptimizer,
     resizer: Resizer,
     rotator: Rotator,
     raw_processor: RawProcessor,
@@ -28,6 +31,7 @@ impl ImageProcessorImpl {
         Self {
             png_optimizer: PngOptimizer::new(),
             jpeg_optimizer: JpegOptimizer::new(),
+            webp_optimizer: WebpOptimizer::new(),
             resizer: Resizer::new(),
             rotator: Rotator::new(),
             raw_processor: RawProcessor::new(),
@@ -92,7 +96,10 @@ impl ImageProcessorImpl {
             ImageFormat::Jpeg | ImageFormat::Raw => self
                 .jpeg_optimizer
                 .optimize_from_dynamic_image(img, settings.quality())?,
-            ImageFormat::Webp | ImageFormat::Gif => {
+            ImageFormat::Webp => {
+                self.webp_optimizer.optimize(img, settings.quality())?
+            }
+            ImageFormat::Gif => {
                 let mut bytes = Vec::new();
                 let mut cursor = Cursor::new(&mut bytes);
                 img.write_to(&mut cursor, Self::convert_format(format))

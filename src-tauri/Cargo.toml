@@ -34,6 +34,7 @@ image = { version = '0.25', default-features = false, features = ['png', 'jpeg',
 oxipng = { version = "9.1", default-features = false }
 mozjpeg = "0.10"
 img-parts = "0.3"
+webp = { version = "0.2", default-features = false, features = ["img"] }
 
 # LibRaw FFI bindings
 # El enlace estático se controla vía feature flags en build time
