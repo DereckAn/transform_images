@@ -16,6 +16,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  APP_NAME: QuakImages
 
 jobs:
   test:
@@ -174,9 +175,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
-          releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && format('Transform Images {0}', github.ref_name) || '' }}
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && format('{0} {1}', env.APP_NAME, github.ref_name) || '' }}
           releaseBody: |
-            ## Transform Images ${{ github.ref_name }}
+            ## ${{ env.APP_NAME }} ${{ github.ref_name }}
 
             Professional image transformation and optimization tool with RAW format support.
 
@@ -188,11 +189,10 @@ jobs:
             - 🧹 Automatic metadata removal
 
             ### Downloads
-            All artifacts now have friendly names for easy identification:
-            - **macOS Intel**: `TransformImages-{version}-macOS-Intel.dmg`
-            - **macOS Apple Silicon**: `TransformImages-{version}-macOS-AppleSilicon.dmg`
-            - **Windows**: `TransformImages-{version}-Windows-x64.msi` or `.exe`
-            - **Linux**: `TransformImages-{version}-Linux-x64.AppImage` or `.deb`
+            - **macOS Intel**: `${{ env.APP_NAME }}-{version}-macOS-Intel.dmg`
+            - **macOS Apple Silicon**: `${{ env.APP_NAME }}-{version}-macOS-AppleSilicon.dmg`
+            - **Windows**: `${{ env.APP_NAME }}-{version}-Windows-x64.msi` or `.exe`
+            - **Linux**: `${{ env.APP_NAME }}-{version}-Linux-x64.AppImage` o `.deb`
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
@@ -203,6 +203,7 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ github.ref_name }}"
+          APP_NAME="${{ env.APP_NAME }}"
           BUNDLE_DIR="src-tauri/target/${{ matrix.target }}/release/bundle"
 
           echo "🔄 Renaming artifacts for platform: ${{ matrix.platform }}"
@@ -213,15 +214,15 @@ jobs:
             # Rename DMG files
             if ls "$BUNDLE_DIR/dmg"/*.dmg 1> /dev/null 2>&1; then
               for file in "$BUNDLE_DIR/dmg"/*.dmg; do
-                mv "$file" "$BUNDLE_DIR/dmg/TransformImages-${VERSION}-macOS-AppleSilicon.dmg"
-                echo "✅ Renamed: $(basename "$file") → TransformImages-${VERSION}-macOS-AppleSilicon.dmg"
+                mv "$file" "$BUNDLE_DIR/dmg/${APP_NAME}-${VERSION}-macOS-AppleSilicon.dmg"
+                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-macOS-AppleSilicon.dmg"
               done
             fi
             # Rename app.tar.gz files
             if ls "$BUNDLE_DIR/macos"/*.app.tar.gz 1> /dev/null 2>&1; then
               for file in "$BUNDLE_DIR/macos"/*.app.tar.gz; do
-                mv "$file" "$BUNDLE_DIR/macos/TransformImages-${VERSION}-macOS-AppleSilicon.app.tar.gz"
-                echo "✅ Renamed: $(basename "$file") → TransformImages-${VERSION}-macOS-AppleSilicon.app.tar.gz"
+                mv "$file" "$BUNDLE_DIR/macos/${APP_NAME}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
+                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
               done
             fi
           fi
@@ -231,15 +232,15 @@ jobs:
             # Rename DMG files
             if ls "$BUNDLE_DIR/dmg"/*.dmg 1> /dev/null 2>&1; then
               for file in "$BUNDLE_DIR/dmg"/*.dmg; do
-                mv "$file" "$BUNDLE_DIR/dmg/TransformImages-${VERSION}-macOS-Intel.dmg"
-                echo "✅ Renamed: $(basename "$file") → TransformImages-${VERSION}-macOS-Intel.dmg"
+                mv "$file" "$BUNDLE_DIR/dmg/${APP_NAME}-${VERSION}-macOS-Intel.dmg"
+                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-macOS-Intel.dmg"
               done
             fi
             # Rename app.tar.gz files
             if ls "$BUNDLE_DIR/macos"/*.app.tar.gz 1> /dev/null 2>&1; then
               for file in "$BUNDLE_DIR/macos"/*.app.tar.gz; do
-                mv "$file" "$BUNDLE_DIR/macos/TransformImages-${VERSION}-macOS-Intel.app.tar.gz"
-                echo "✅ Renamed: $(basename "$file") → TransformImages-${VERSION}-macOS-Intel.app.tar.gz"
+                mv "$file" "$BUNDLE_DIR/macos/${APP_NAME}-${VERSION}-macOS-Intel.app.tar.gz"
+                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-macOS-Intel.app.tar.gz"
               done
             fi
           fi
@@ -249,15 +250,15 @@ jobs:
             # Rename MSI files
             if ls "$BUNDLE_DIR/msi"/*.msi 1> /dev/null 2>&1; then
               for file in "$BUNDLE_DIR/msi"/*.msi; do
-                mv "$file" "$BUNDLE_DIR/msi/TransformImages-${VERSION}-Windows-x64.msi"
-                echo "✅ Renamed: $(basename "$file") → TransformImages-${VERSION}-Windows-x64.msi"
+                mv "$file" "$BUNDLE_DIR/msi/${APP_NAME}-${VERSION}-Windows-x64.msi"
+                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-Windows-x64.msi"
               done
             fi
             # Rename NSIS installer files
             if ls "$BUNDLE_DIR/nsis"/*-setup.exe 1> /dev/null 2>&1; then
               for file in "$BUNDLE_DIR/nsis"/*-setup.exe; do
-                mv "$file" "$BUNDLE_DIR/nsis/TransformImages-${VERSION}-Windows-x64-Setup.exe"
-                echo "✅ Renamed: $(basename "$file") → TransformImages-${VERSION}-Windows-x64-Setup.exe"
+                mv "$file" "$BUNDLE_DIR/nsis/${APP_NAME}-${VERSION}-Windows-x64-Setup.exe"
+                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-Windows-x64-Setup.exe"
               done
             fi
           fi
@@ -267,22 +268,22 @@ jobs:
             # Rename DEB files
             if ls "$BUNDLE_DIR/deb"/*.deb 1> /dev/null 2>&1; then
               for file in "$BUNDLE_DIR/deb"/*.deb; do
-                mv "$file" "$BUNDLE_DIR/deb/TransformImages-${VERSION}-Linux-x64.deb"
-                echo "✅ Renamed: $(basename "$file") → TransformImages-${VERSION}-Linux-x64.deb"
+                mv "$file" "$BUNDLE_DIR/deb/${APP_NAME}-${VERSION}-Linux-x64.deb"
+                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-Linux-x64.deb"
               done
             fi
             # Rename AppImage files
             if ls "$BUNDLE_DIR/appimage"/*.AppImage 1> /dev/null 2>&1; then
               for file in "$BUNDLE_DIR/appimage"/*.AppImage; do
-                mv "$file" "$BUNDLE_DIR/appimage/TransformImages-${VERSION}-Linux-x64.AppImage"
-                echo "✅ Renamed: $(basename "$file") → TransformImages-${VERSION}-Linux-x64.AppImage"
+                mv "$file" "$BUNDLE_DIR/appimage/${APP_NAME}-${VERSION}-Linux-x64.AppImage"
+                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-Linux-x64.AppImage"
               done
             fi
             # Rename RPM files
             if ls "$BUNDLE_DIR/rpm"/*.rpm 1> /dev/null 2>&1; then
               for file in "$BUNDLE_DIR/rpm"/*.rpm; do
-                mv "$file" "$BUNDLE_DIR/rpm/TransformImages-${VERSION}-Linux-x64.rpm"
-                echo "✅ Renamed: $(basename "$file") → TransformImages-${VERSION}-Linux-x64.rpm"
+                mv "$file" "$BUNDLE_DIR/rpm/${APP_NAME}-${VERSION}-Linux-x64.rpm"
+                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-Linux-x64.rpm"
               done
             fi
           fi
