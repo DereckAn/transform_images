@@ -67,10 +67,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: macOS-Intel
-            platform: macos-15
-            target: x86_64-apple-darwin
-            args: --target x86_64-apple-darwin --features static
           - name: macOS-AppleSilicon
             platform: macos-15
             target: aarch64-apple-darwin
@@ -177,11 +173,6 @@ jobs:
             fi
           }
 
-          # macOS Intel
-          copy_file "x86_64-apple-darwin" "*.dmg" "${APP}-${VERSION}-macOS-Intel.dmg"
-          copy_file "x86_64-apple-darwin" "*.app.tar.gz" "${APP}-${VERSION}-macOS-Intel.app.tar.gz"
-          copy_file "x86_64-apple-darwin" "*.app.tar.gz.sig" "${APP}-${VERSION}-macOS-Intel.app.tar.gz.sig"
-
           # macOS Apple Silicon
           copy_file "aarch64-apple-darwin" "*.dmg" "${APP}-${VERSION}-macOS-AppleSilicon.dmg"
           copy_file "aarch64-apple-darwin" "*.app.tar.gz" "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
@@ -213,7 +204,6 @@ jobs:
             [ -f "$file" ] && cat "$file" || echo ""
           }
 
-          MACOS_INTEL_SIG=$(read_sig "${APP}-${VERSION}-macOS-Intel.app.tar.gz.sig")
           MACOS_ARM_SIG=$(read_sig "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz.sig")
           WINDOWS_SIG=$(read_sig "${APP}-${VERSION}-Windows-x64-Setup.exe.sig")
 
@@ -223,10 +213,6 @@ jobs:
             "notes": "See release notes on GitHub",
             "pub_date": "${PUB_DATE}",
             "platforms": {
-              "darwin-x86_64": {
-                "signature": "${MACOS_INTEL_SIG}",
-                "url": "${BASE_URL}/${APP}-${VERSION}-macOS-Intel.app.tar.gz"
-              },
               "darwin-aarch64": {
                 "signature": "${MACOS_ARM_SIG}",
                 "url": "${BASE_URL}/${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
@@ -255,8 +241,7 @@ jobs:
             | Platform | Architecture | Download |
             |----------|-------------|----------|
             | macOS | Apple Silicon | [.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-macOS-AppleSilicon.dmg) |
-            | macOS | Intel | [.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-macOS-Intel.dmg) |
-            | Windows | x64 | [Setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64-Setup.exe) / [.msi](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64.msi) |
+            | Windows | x64 | [Setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64-Setup.exe) |
             | Linux | x64 | [.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.AppImage) / [.deb](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.deb) / [.rpm](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.rpm) |
 
             ### 🔄 Auto-Update
@@ -265,5 +250,5 @@ jobs:
             ### 🍎 macOS Note
             If you see "app is damaged", run:
             ```bash
-            sudo xattr -d com.apple.quarantine "/Applications/QuakImages.app"
+            sudo xattr -d com.apple.quarantine "/Applications/quakimages.app"
             ```
