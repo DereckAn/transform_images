@@ -1,6 +1,8 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check } from "@tauri-apps/plugin-updater";
 import { ImageService } from "./app/services/ImageService";
 import { AppState } from "./app/state/AppState";
 import type { ProcessedImage } from "./models/types";
@@ -49,6 +51,46 @@ let flipHorizontalCheck: HTMLInputElement;
 let flipVerticalCheck: HTMLInputElement;
 let resetTransformationsBtn: HTMLButtonElement;
 let transformIcon: HTMLElement;
+
+let pendingUpdate: Awaited<ReturnType<typeof check>> = null;
+
+async function checkForUpdates() {
+  try {
+    const update = await check();
+    if (update) {
+      pendingUpdate = update;
+      document.getElementById("update-indicator")?.classList.remove("hidden");
+    }
+  } catch (e) {
+    console.error("Failed to check for updates:", e);
+  }
+}
+
+function setupUpdateDialog() {
+  const logoContainer = document.getElementById("logo-container");
+  const updateDialog = document.getElementById("update-dialog");
+  const updateCancel = document.getElementById("update-cancel");
+  const updateConfirm = document.getElementById("update-confirm");
+  const updateVersion = document.getElementById("update-version");
+
+  logoContainer?.addEventListener("click", () => {
+    if (pendingUpdate) {
+      updateVersion!.textContent = `Version ${pendingUpdate.version} is available.`;
+      updateDialog?.classList.remove("hidden");
+    }
+  });
+
+  updateCancel?.addEventListener("click", () => {
+    updateDialog?.classList.add("hidden");
+  });
+
+  updateConfirm?.addEventListener("click", async () => {
+    if (pendingUpdate) {
+      await pendingUpdate.downloadAndInstall();
+      await relaunch();
+    }
+  });
+}
 
 async function initialize() {
   // Get DOM elements
@@ -128,6 +170,10 @@ async function initialize() {
 
   console.log("Transform Images App initialized!");
   console.log("Architecture: Clean + Hexagonal + Multithreading");
+
+  // Llamar al iniciar
+  checkForUpdates();
+  setupUpdateDialog();
 }
 
 function setupEventListeners() {

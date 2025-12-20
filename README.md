@@ -16,7 +16,11 @@ Cada release publica instaladores con este patrón: `QuakImages-{versión}-{plat
   1. Descarga el `.dmg` correspondiente.  
   2. Abre el DMG y arrastra Quak Images a `Applications`.  
   3. Como no tenemos Apple Developer ID, macOS lo marcará como “desarrollador no verificado”. En Finder, `Control + clic` → **Abrir** → confirma la advertencia.  
-  4. Si Gatekeeper insiste, ejecuta `xattr -d com.apple.quarantine /Applications/Quak\ Images.app`.
+  4. Para forzar la verificación desde Terminal puedes ejecutar (copy/paste):
+     ```bash
+     xattr -cr "/Applications/Quak Images.app"
+     ```
+     Esto elimina los atributos de cuarentena y evita que Gatekeeper bloquee la app.
 - **Windows 10/11**  
   - Usa el `.msi` o `-Setup.exe`. SmartScreen mostrará “Publisher: Unknown”; presiona **More info** → **Run anyway**.
 - **Linux (x86_64)**  
