@@ -2,24 +2,23 @@ name: Build and Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     tags:
-      - 'v*'
+      - "v*"
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
-# Permisos necesarios para crear releases y subir artifacts
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
-  packages: write
 
 env:
   CARGO_TERM_COLOR: always
   APP_NAME: QuakImages
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
 jobs:
   test:
@@ -49,53 +48,41 @@ jobs:
             liblcms2-dev \
             libjpeg-dev
 
-      - name: Cache cargo registry
+      - name: Cache cargo
         uses: actions/cache@v4
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: src-tauri/target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run tests
         run: cd src-tauri && cargo test --lib --verbose
 
   build-tauri:
-    name: Build Tauri App
+    name: Build (${{ matrix.name }})
     needs: test
     strategy:
       fail-fast: false
       matrix:
         include:
-          # macOS Intel (static linking)
-          - platform: macos-13
+          - name: macOS-Intel
+            platform: macos-15
             target: x86_64-apple-darwin
             args: --target x86_64-apple-darwin --features static
-
-          # macOS Apple Silicon (static linking)
-          - platform: macos-14
+          - name: macOS-AppleSilicon
+            platform: macos-15
             target: aarch64-apple-darwin
             args: --target aarch64-apple-darwin --features static
-
-          # Windows (static linking)
-          - platform: windows-latest
+          - name: Windows-x64
+            platform: windows-latest
             target: x86_64-pc-windows-msvc
             args: --features static
-
-          # Linux (dynamic linking - no static feature)
-          - platform: ubuntu-22.04
+          - name: Linux-x64
+            platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            args: ''
+            args: ""
 
     runs-on: ${{ matrix.platform }}
 
@@ -112,53 +99,27 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      # macOS dependencies
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
-        run: |
-          brew install libraw little-cms2 jpeg-turbo
+        run: brew install libraw little-cms2 jpeg-turbo
 
-      # Windows dependencies
       - name: Install Windows dependencies
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          # Install vcpkg
-          Write-Host "Installing vcpkg..."
           git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
           C:\vcpkg\bootstrap-vcpkg.bat
-
-          # Install LibRaw and dependencies (static linking)
-          Write-Host "Installing LibRaw and dependencies..."
-          C:\vcpkg\vcpkg install libraw:x64-windows-static
-          C:\vcpkg\vcpkg install lcms:x64-windows-static
-          C:\vcpkg\vcpkg install libjpeg-turbo:x64-windows-static
-          C:\vcpkg\vcpkg install zlib:x64-windows-static
-
-          # Set environment variable for subsequent steps
+          C:\vcpkg\vcpkg install libraw:x64-windows-static lcms:x64-windows-static libjpeg-turbo:x64-windows-static zlib:x64-windows-static
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
-      # Linux dependencies
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libgtk-3-dev \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libxdo-dev \
-            libssl-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            libraw-dev \
-            liblcms2-dev \
-            libjpeg-dev
-          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig" >> $GITHUB_ENV
-
+            libwebkit2gtk-4.1-dev libgtk-3-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+            libraw-dev liblcms2-dev libjpeg-dev
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -173,122 +134,136 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bun run tauri build ${{ matrix.args }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
-          releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && format('{0} {1}', env.APP_NAME, github.ref_name) || '' }}
-          releaseBody: |
-            ## ${{ env.APP_NAME }} ${{ github.ref_name }}
+          name: tauri-${{ matrix.target }}
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/**
+          retention-days: 7
+
+  release:
+    name: Create Release
+    needs: build-tauri
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        id: prepare
+        run: |
+          mkdir -p release-assets
+          VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          APP="${{ env.APP_NAME }}"
+
+          copy_file() {
+            local target="$1" pattern="$2" dest="$3"
+            local file=$(find "artifacts/tauri-${target}" -type f -name "$pattern" 2>/dev/null | head -1)
+            if [ -n "$file" ] && [ -f "$file" ]; then
+              cp "$file" "release-assets/${dest}"
+              echo "✅ ${dest}"
+            fi
+          }
+
+          # macOS Intel
+          copy_file "x86_64-apple-darwin" "*.dmg" "${APP}-${VERSION}-macOS-Intel.dmg"
+          copy_file "x86_64-apple-darwin" "*.app.tar.gz" "${APP}-${VERSION}-macOS-Intel.app.tar.gz"
+          copy_file "x86_64-apple-darwin" "*.app.tar.gz.sig" "${APP}-${VERSION}-macOS-Intel.app.tar.gz.sig"
+
+          # macOS Apple Silicon
+          copy_file "aarch64-apple-darwin" "*.dmg" "${APP}-${VERSION}-macOS-AppleSilicon.dmg"
+          copy_file "aarch64-apple-darwin" "*.app.tar.gz" "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
+          copy_file "aarch64-apple-darwin" "*.app.tar.gz.sig" "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz.sig"
+
+          # Windows
+          copy_file "x86_64-pc-windows-msvc" "*x64-setup.exe" "${APP}-${VERSION}-Windows-x64-Setup.exe"
+          copy_file "x86_64-pc-windows-msvc" "*x64-setup.exe.sig" "${APP}-${VERSION}-Windows-x64-Setup.exe.sig"
+
+
+          # Linux
+          copy_file "x86_64-unknown-linux-gnu" "*.AppImage" "${APP}-${VERSION}-Linux-x64.AppImage"
+          copy_file "x86_64-unknown-linux-gnu" "*.deb" "${APP}-${VERSION}-Linux-x64.deb"
+          copy_file "x86_64-unknown-linux-gnu" "*.rpm" "${APP}-${VERSION}-Linux-x64.rpm"
+
+          (cd release-assets && sha256sum * > SHA256SUMS 2>/dev/null || true)
+
+      - name: Generate latest.json
+        run: |
+          VERSION=${{ steps.prepare.outputs.version }}
+          TAG=${GITHUB_REF#refs/tags/}
+          REPO=${{ github.repository }}
+          APP="${{ env.APP_NAME }}"
+          BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          read_sig() {
+            local file="release-assets/$1"
+            [ -f "$file" ] && cat "$file" || echo ""
+          }
+
+          MACOS_INTEL_SIG=$(read_sig "${APP}-${VERSION}-macOS-Intel.app.tar.gz.sig")
+          MACOS_ARM_SIG=$(read_sig "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz.sig")
+          WINDOWS_SIG=$(read_sig "${APP}-${VERSION}-Windows-x64-Setup.exe.sig")
+
+          cat > release-assets/latest.json << EOF
+          {
+            "version": "${VERSION}",
+            "notes": "See release notes on GitHub",
+            "pub_date": "${PUB_DATE}",
+            "platforms": {
+              "darwin-x86_64": {
+                "signature": "${MACOS_INTEL_SIG}",
+                "url": "${BASE_URL}/${APP}-${VERSION}-macOS-Intel.app.tar.gz"
+              },
+              "darwin-aarch64": {
+                "signature": "${MACOS_ARM_SIG}",
+                "url": "${BASE_URL}/${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
+              },
+              "windows-x86_64": {
+                "signature": "${WINDOWS_SIG}",
+                "url": "${BASE_URL}/${APP}-${VERSION}-Windows-x64-Setup.exe"
+              }
+            }
+          }
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          draft: false
+          prerelease: false
+          body: |
+            ## 📦 ${{ env.APP_NAME }} ${{ github.ref_name }}
 
             Professional image transformation and optimization tool with RAW format support.
 
-            ### Features
-            - 🖼️ RAW format support (Sony, Canon, Nikon, etc.)
-            - ⚡ Batch processing with multithreading
-            - 🎨 Advanced transformations (resize, rotate, flip)
-            - 🗜️ Smart optimization (JPEG, PNG, WebP)
-            - 🧹 Automatic metadata removal
-
             ### Downloads
-            - **macOS Intel**: `${{ env.APP_NAME }}-{version}-macOS-Intel.dmg`
-            - **macOS Apple Silicon**: `${{ env.APP_NAME }}-{version}-macOS-AppleSilicon.dmg`
-            - **Windows**: `${{ env.APP_NAME }}-{version}-Windows-x64.msi` or `.exe`
-            - **Linux**: `${{ env.APP_NAME }}-{version}-Linux-x64.AppImage` o `.deb`
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
 
-      # Rename artifacts with friendly names for better user experience
-      - name: Rename artifacts with friendly names
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        run: |
-          VERSION="${{ github.ref_name }}"
-          APP_NAME="${{ env.APP_NAME }}"
-          BUNDLE_DIR="src-tauri/target/${{ matrix.target }}/release/bundle"
+            | Platform | Architecture | Download |
+            |----------|-------------|----------|
+            | macOS | Apple Silicon | [.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-macOS-AppleSilicon.dmg) |
+            | macOS | Intel | [.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-macOS-Intel.dmg) |
+            | Windows | x64 | [Setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64-Setup.exe) / [.msi](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64.msi) |
+            | Linux | x64 | [.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.AppImage) / [.deb](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.deb) / [.rpm](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.rpm) |
 
-          echo "🔄 Renaming artifacts for platform: ${{ matrix.platform }}"
-          echo "📦 Bundle directory: $BUNDLE_DIR"
+            ### 🔄 Auto-Update
+            If you already have the app installed, it will notify you when updates are available!
 
-          # macOS Apple Silicon
-          if [ "${{ matrix.platform }}" = "macos-14" ]; then
-            # Rename DMG files
-            if ls "$BUNDLE_DIR/dmg"/*.dmg 1> /dev/null 2>&1; then
-              for file in "$BUNDLE_DIR/dmg"/*.dmg; do
-                mv "$file" "$BUNDLE_DIR/dmg/${APP_NAME}-${VERSION}-macOS-AppleSilicon.dmg"
-                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-macOS-AppleSilicon.dmg"
-              done
-            fi
-            # Rename app.tar.gz files
-            if ls "$BUNDLE_DIR/macos"/*.app.tar.gz 1> /dev/null 2>&1; then
-              for file in "$BUNDLE_DIR/macos"/*.app.tar.gz; do
-                mv "$file" "$BUNDLE_DIR/macos/${APP_NAME}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
-                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
-              done
-            fi
-          fi
-
-          # macOS Intel
-          if [ "${{ matrix.platform }}" = "macos-13" ]; then
-            # Rename DMG files
-            if ls "$BUNDLE_DIR/dmg"/*.dmg 1> /dev/null 2>&1; then
-              for file in "$BUNDLE_DIR/dmg"/*.dmg; do
-                mv "$file" "$BUNDLE_DIR/dmg/${APP_NAME}-${VERSION}-macOS-Intel.dmg"
-                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-macOS-Intel.dmg"
-              done
-            fi
-            # Rename app.tar.gz files
-            if ls "$BUNDLE_DIR/macos"/*.app.tar.gz 1> /dev/null 2>&1; then
-              for file in "$BUNDLE_DIR/macos"/*.app.tar.gz; do
-                mv "$file" "$BUNDLE_DIR/macos/${APP_NAME}-${VERSION}-macOS-Intel.app.tar.gz"
-                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-macOS-Intel.app.tar.gz"
-              done
-            fi
-          fi
-
-          # Windows
-          if [ "${{ matrix.platform }}" = "windows-latest" ]; then
-            # Rename MSI files
-            if ls "$BUNDLE_DIR/msi"/*.msi 1> /dev/null 2>&1; then
-              for file in "$BUNDLE_DIR/msi"/*.msi; do
-                mv "$file" "$BUNDLE_DIR/msi/${APP_NAME}-${VERSION}-Windows-x64.msi"
-                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-Windows-x64.msi"
-              done
-            fi
-            # Rename NSIS installer files
-            if ls "$BUNDLE_DIR/nsis"/*-setup.exe 1> /dev/null 2>&1; then
-              for file in "$BUNDLE_DIR/nsis"/*-setup.exe; do
-                mv "$file" "$BUNDLE_DIR/nsis/${APP_NAME}-${VERSION}-Windows-x64-Setup.exe"
-                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-Windows-x64-Setup.exe"
-              done
-            fi
-          fi
-
-          # Linux
-          if [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
-            # Rename DEB files
-            if ls "$BUNDLE_DIR/deb"/*.deb 1> /dev/null 2>&1; then
-              for file in "$BUNDLE_DIR/deb"/*.deb; do
-                mv "$file" "$BUNDLE_DIR/deb/${APP_NAME}-${VERSION}-Linux-x64.deb"
-                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-Linux-x64.deb"
-              done
-            fi
-            # Rename AppImage files
-            if ls "$BUNDLE_DIR/appimage"/*.AppImage 1> /dev/null 2>&1; then
-              for file in "$BUNDLE_DIR/appimage"/*.AppImage; do
-                mv "$file" "$BUNDLE_DIR/appimage/${APP_NAME}-${VERSION}-Linux-x64.AppImage"
-                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-Linux-x64.AppImage"
-              done
-            fi
-            # Rename RPM files
-            if ls "$BUNDLE_DIR/rpm"/*.rpm 1> /dev/null 2>&1; then
-              for file in "$BUNDLE_DIR/rpm"/*.rpm; do
-                mv "$file" "$BUNDLE_DIR/rpm/${APP_NAME}-${VERSION}-Linux-x64.rpm"
-                echo "✅ Renamed: $(basename "$file") → ${APP_NAME}-${VERSION}-Linux-x64.rpm"
-              done
-            fi
-          fi
-
-          echo "✅ Artifact renaming completed for ${{ matrix.platform }}"
+            ### 🍎 macOS Note
+            If you see "app is damaged", run:
+            ```bash
+            sudo xattr -d com.apple.quarantine "/Applications/QuakImages.app"
+            ```
