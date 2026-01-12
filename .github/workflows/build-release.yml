@@ -75,11 +75,12 @@ jobs:
           HASH=$(git ls-files \
             'src/**' \
             'package.json' \
-            'bun.lock' \
+            'bun.lockb' \
             'svelte.config.js' \
             'vite.config.ts' \
-            'tsconfig.json' | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+            'tsconfig.json' 2>/dev/null | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
           echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+          echo "📦 Frontend hash: $HASH"
 
       - name: Restore cached build
         id: cache-frontend
@@ -93,7 +94,7 @@ jobs:
       - name: Check if build needed
         id: check-build
         run: |
-          if [ -d "dist" ] && [ "$(find dist -type f | wc -l)" -gt 0 ]; then
+          if [ -d "dist" ] && [ "$(find dist -type f 2>/dev/null | wc -l)" -gt 0 ]; then
             echo "✅ dist folder exists with files (from cache)"
             echo "needs_build=false" >> "$GITHUB_OUTPUT"
           else
@@ -109,19 +110,93 @@ jobs:
 
       - name: Install dependencies
         if: steps.check-build.outputs.needs_build == 'true'
-        run: bun install --frozen-lockfile
+        run: |
+          echo "📦 Installing dependencies..."
+          bun install --frozen-lockfile
+          echo "✅ Dependencies installed"
+
+      - name: Debug - Check project structure
+        if: steps.check-build.outputs.needs_build == 'true'
+        run: |
+          echo "📁 Project structure:"
+          ls -la
+          echo ""
+          echo "📄 package.json scripts:"
+          cat package.json | grep -A 10 '"scripts"' || echo "No scripts found"
+          echo ""
+          echo "⚙️ vite.config.ts (if exists):"
+          if [ -f "vite.config.ts" ]; then
+            cat vite.config.ts | grep -A 5 "build:" || echo "No build config found"
+          fi
+          echo ""
+          echo "⚙️ svelte.config.js (if exists):"
+          if [ -f "svelte.config.js" ]; then
+            cat svelte.config.js | head -20
+          fi
 
       - name: Build frontend
         if: steps.check-build.outputs.needs_build == 'true'
-        run: bun run build
+        run: |
+          echo "🔨 Building frontend..."
+          bun run build
+          echo "✅ Build command completed"
+
+      - name: Debug - Check build output
+        if: steps.check-build.outputs.needs_build == 'true'
+        run: |
+          echo "📂 Checking for output directories..."
+          for dir in dist build output .svelte-kit/output; do
+            if [ -d "$dir" ]; then
+              echo "✅ Found: $dir"
+              echo "   Contents:"
+              ls -lah "$dir" | head -20
+            else
+              echo "❌ Not found: $dir"
+            fi
+          done
+
+      - name: Copy build output to dist (if needed)
+        if: steps.check-build.outputs.needs_build == 'true'
+        run: |
+          # Si SvelteKit genera en .svelte-kit/output, copiarlo a dist
+          if [ -d ".svelte-kit/output/client" ] && [ ! -d "dist" ]; then
+            echo "📦 Copying SvelteKit output to dist..."
+            cp -r .svelte-kit/output/client dist
+            echo "✅ Copied to dist"
+          fi
+          
+          # Si el build está en 'build' en lugar de 'dist', renombrar
+          if [ -d "build" ] && [ ! -d "dist" ]; then
+            echo "📦 Renaming build to dist..."
+            mv build dist
+            echo "✅ Renamed to dist"
+          fi
 
       - name: Verify dist folder exists
         run: |
           if [ ! -d "dist" ]; then
-            echo "❌ Error: dist folder not found!"
+            echo "❌ Error: dist folder not found after build!"
+            echo ""
+            echo "Available directories:"
+            ls -la
+            echo ""
+            echo "Checking common build output locations:"
+            for dir in build output .svelte-kit/output/client public; do
+              if [ -d "$dir" ]; then
+                echo "Found: $dir ($(find $dir -type f | wc -l) files)"
+              fi
+            done
             exit 1
           fi
-          echo "✅ dist folder found with $(find dist -type f | wc -l) files"
+          FILE_COUNT=$(find dist -type f 2>/dev/null | wc -l)
+          if [ "$FILE_COUNT" -eq 0 ]; then
+            echo "❌ Error: dist folder is empty!"
+            exit 1
+          fi
+          echo "✅ dist folder found with $FILE_COUNT files"
+          echo ""
+          echo "📁 dist contents (first 20 items):"
+          ls -lah dist | head -20
 
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
@@ -129,6 +204,7 @@ jobs:
           name: frontend-build
           path: dist
           retention-days: 3
+          if-no-files-found: error
 
   build-tauri:
     name: Build (${{ matrix.name }})
@@ -171,9 +247,12 @@ jobs:
         run: |
           if [ ! -d "dist" ]; then
             echo "❌ Error: dist folder not found after download!"
+            echo "Available files:"
+            ls -la
             exit 1
           fi
-          echo "✅ dist folder found with $(find dist -type f | wc -l) files"
+          FILE_COUNT=$(find dist -type f 2>/dev/null | wc -l)
+          echo "✅ dist folder downloaded with $FILE_COUNT files"
         shell: bash
 
       - name: Setup Node.js (for all platforms)
