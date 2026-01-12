@@ -3,9 +3,8 @@
 /* Define custom theme using Tailwind v4 @theme directive */
 @theme {
   /* Custom Colors */
-  --color-primary: #000000;
-  --color-background-light: #f7f7f7;
-  --color-background-dark: #191919;
+  /* --color-primary: #000000; */
+  --color-background: rgba(19, 18, 20, 0.81);
   --color-slate-900: #0f172a;
   --color-slate-800: #1e293b;
   --color-slate-700: #334155;
@@ -49,7 +48,7 @@
 /* Custom Utilities */
 @layer utilities {
   .scrollbar-thin {
-    scrollbar-width: thin;
+    scrollbar-width: none;
     scrollbar-color: transparent transparent;
     transition: scrollbar-color 0.3s;
   }
