@@ -2,7 +2,7 @@ name: Build and Release
 
 on:
   push:
-    branches: [main]
+    branches: [main, test-workflow] # Agregada rama de testing
     tags:
       - "v*"
   pull_request:
@@ -67,17 +67,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: macOS-Intel
+            platform: macos-13
+            target: x86_64-apple-darwin
+            args: --features static
           - name: macOS-AppleSilicon
-            platform: macos-15
+            platform: macos-latest
             target: aarch64-apple-darwin
-            args: --target aarch64-apple-darwin --features static
+            args: --features static
           - name: Windows-x64
             platform: windows-latest
             target: x86_64-pc-windows-msvc
             args: --features static
+          - name: Windows-ARM64
+            platform: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            args: --features static
           - name: Linux-x64
             platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            args: ""
+          - name: Linux-ARM64
+            platform: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-gnu
             args: ""
 
     runs-on: ${{ matrix.platform }}
@@ -92,8 +104,6 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
@@ -105,7 +115,10 @@ jobs:
         run: |
           git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
           C:\vcpkg\bootstrap-vcpkg.bat
-          C:\vcpkg\vcpkg install libraw:x64-windows-static lcms:x64-windows-static libjpeg-turbo:x64-windows-static zlib:x64-windows-static
+
+          # Detectar arquitectura y usar el triplet correcto
+          $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }
+          C:\vcpkg\vcpkg install libraw:${arch}-windows-static lcms:${arch}-windows-static libjpeg-turbo:${arch}-windows-static zlib:${arch}-windows-static
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
       - name: Install Linux dependencies
@@ -170,24 +183,44 @@ jobs:
             if [ -n "$file" ] && [ -f "$file" ]; then
               cp "$file" "release-assets/${dest}"
               echo "✅ ${dest}"
+            else
+              echo "⚠️ No encontrado: $pattern en tauri-${target}"
             fi
           }
+
+          # macOS Intel
+          copy_file "x86_64-apple-darwin" "*.dmg" "${APP}-${VERSION}-macOS-Intel.dmg"
+          copy_file "x86_64-apple-darwin" "*.app.tar.gz" "${APP}-${VERSION}-macOS-Intel.app.tar.gz"
+          copy_file "x86_64-apple-darwin" "*.app.tar.gz.sig" "${APP}-${VERSION}-macOS-Intel.app.tar.gz.sig"
 
           # macOS Apple Silicon
           copy_file "aarch64-apple-darwin" "*.dmg" "${APP}-${VERSION}-macOS-AppleSilicon.dmg"
           copy_file "aarch64-apple-darwin" "*.app.tar.gz" "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
           copy_file "aarch64-apple-darwin" "*.app.tar.gz.sig" "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz.sig"
 
-          # Windows
+          # Windows x64 (NSIS - recomendado para updater)
           copy_file "x86_64-pc-windows-msvc" "*x64-setup.exe" "${APP}-${VERSION}-Windows-x64-Setup.exe"
           copy_file "x86_64-pc-windows-msvc" "*x64-setup.exe.sig" "${APP}-${VERSION}-Windows-x64-Setup.exe.sig"
+          # Windows x64 MSI (opcional, solo si se compila en Windows)
+          copy_file "x86_64-pc-windows-msvc" "*x64_en-US.msi" "${APP}-${VERSION}-Windows-x64.msi"
 
+          # Windows ARM64 (NSIS)
+          copy_file "aarch64-pc-windows-msvc" "*arm64-setup.exe" "${APP}-${VERSION}-Windows-ARM64-Setup.exe"
+          copy_file "aarch64-pc-windows-msvc" "*arm64-setup.exe.sig" "${APP}-${VERSION}-Windows-ARM64-Setup.exe.sig"
+          # Windows ARM64 MSI (opcional)
+          copy_file "aarch64-pc-windows-msvc" "*arm64_en-US.msi" "${APP}-${VERSION}-Windows-ARM64.msi"
 
-          # Linux
+          # Linux x64 (NO genera .sig - updater no soportado)
           copy_file "x86_64-unknown-linux-gnu" "*.AppImage" "${APP}-${VERSION}-Linux-x64.AppImage"
           copy_file "x86_64-unknown-linux-gnu" "*.deb" "${APP}-${VERSION}-Linux-x64.deb"
           copy_file "x86_64-unknown-linux-gnu" "*.rpm" "${APP}-${VERSION}-Linux-x64.rpm"
 
+          # Linux ARM64 (NO genera .sig - updater no soportado)
+          copy_file "aarch64-unknown-linux-gnu" "*.AppImage" "${APP}-${VERSION}-Linux-ARM64.AppImage"
+          copy_file "aarch64-unknown-linux-gnu" "*.deb" "${APP}-${VERSION}-Linux-ARM64.deb"
+          copy_file "aarch64-unknown-linux-gnu" "*.rpm" "${APP}-${VERSION}-Linux-ARM64.rpm"
+
+          # Generar checksums SHA256 para verificación de integridad
           (cd release-assets && sha256sum * > SHA256SUMS 2>/dev/null || true)
 
       - name: Generate latest.json
@@ -204,8 +237,10 @@ jobs:
             [ -f "$file" ] && cat "$file" || echo ""
           }
 
+          MACOS_INTEL_SIG=$(read_sig "${APP}-${VERSION}-macOS-Intel.app.tar.gz.sig")
           MACOS_ARM_SIG=$(read_sig "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz.sig")
-          WINDOWS_SIG=$(read_sig "${APP}-${VERSION}-Windows-x64-Setup.exe.sig")
+          WINDOWS_X64_SIG=$(read_sig "${APP}-${VERSION}-Windows-x64-Setup.exe.sig")
+          WINDOWS_ARM_SIG=$(read_sig "${APP}-${VERSION}-Windows-ARM64-Setup.exe.sig")
 
           cat > release-assets/latest.json << EOF
           {
@@ -213,13 +248,21 @@ jobs:
             "notes": "See release notes on GitHub",
             "pub_date": "${PUB_DATE}",
             "platforms": {
+              "darwin-x86_64": {
+                "signature": "${MACOS_INTEL_SIG}",
+                "url": "${BASE_URL}/${APP}-${VERSION}-macOS-Intel.app.tar.gz"
+              },
               "darwin-aarch64": {
                 "signature": "${MACOS_ARM_SIG}",
                 "url": "${BASE_URL}/${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
               },
               "windows-x86_64": {
-                "signature": "${WINDOWS_SIG}",
+                "signature": "${WINDOWS_X64_SIG}",
                 "url": "${BASE_URL}/${APP}-${VERSION}-Windows-x64-Setup.exe"
+              },
+              "windows-aarch64": {
+                "signature": "${WINDOWS_ARM_SIG}",
+                "url": "${BASE_URL}/${APP}-${VERSION}-Windows-ARM64-Setup.exe"
               }
             }
           }
@@ -229,7 +272,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*
-          draft: false
+          draft: ${{ !startsWith(github.ref, 'refs/tags/v') }} # Draft si NO es un tag
           prerelease: false
           body: |
             ## 📦 ${{ env.APP_NAME }} ${{ github.ref_name }}
@@ -240,14 +283,21 @@ jobs:
 
             | Platform | Architecture | Download |
             |----------|-------------|----------|
+            | macOS | Intel | [.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-macOS-Intel.dmg) |
             | macOS | Apple Silicon | [.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-macOS-AppleSilicon.dmg) |
-            | Windows | x64 | [Setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64-Setup.exe) |
+            | Windows | x64 | [Setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64-Setup.exe) / [.msi](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64.msi) |
+            | Windows | ARM64 | [Setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-ARM64-Setup.exe) / [.msi](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-ARM64.msi) |
             | Linux | x64 | [.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.AppImage) / [.deb](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.deb) / [.rpm](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.rpm) |
+            | Linux | ARM64 | [.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-ARM64.AppImage) / [.deb](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-ARM64.deb) / [.rpm](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-ARM64.rpm) |
 
             ### 🔄 Auto-Update
-            If you already have the app installed, it will notify you when updates are available!
+            If you already have the app installed, it will automatically check for updates and notify you when a new version is available!
 
-            ### 🍎 macOS Note
+            **Supported platforms:** macOS (Intel & Apple Silicon), Windows (x64 & ARM64)
+
+            **Note:** Linux users need to manually download and install updates.
+
+            ### 🍎 macOS Installation Note
             If you see "app is damaged", run:
             ```bash
             sudo xattr -d com.apple.quarantine "/Applications/quakimages.app"

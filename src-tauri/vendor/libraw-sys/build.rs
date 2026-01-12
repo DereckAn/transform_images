@@ -75,6 +75,9 @@ fn configure_linux(is_static: bool) {
     // Linux usa libstdc++ (GNU)
     println!("cargo:rustc-link-lib=dylib=stdc++");
 
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+    println!("cargo:warning=🔗 LibRaw: Linux {} (compilación nativa)", target_arch);
+
     if is_static {
         println!("cargo:rustc-link-lib=static=raw_r");
         println!("cargo:rustc-link-lib=static=lcms2");
@@ -100,12 +103,12 @@ fn configure_windows(is_static: bool) {
             });
 
         let target = env::var("TARGET").unwrap();
-        let vcpkg_triplet = if target.contains("x86_64") {
+        let vcpkg_triplet = if target.contains("aarch64") {
+            "arm64-windows-static"
+        } else if target.contains("x86_64") {
             "x64-windows-static"
         } else if target.contains("i686") {
             "x86-windows-static"
-        } else if target.contains("aarch64") {
-            "arm64-windows-static"
         } else {
             "x64-windows-static"
         };
@@ -119,7 +122,7 @@ fn configure_windows(is_static: bool) {
         let zlib_lib = Path::new(&lib_path).join("zlib.lib");
 
         if raw_lib.exists() && lcms2_lib.exists() && jpeg_lib.exists() && zlib_lib.exists() {
-            println!("cargo:warning=✓ Bibliotecas estáticas encontradas en vcpkg");
+            println!("cargo:warning=✓ Bibliotecas estáticas encontradas en vcpkg ({})", vcpkg_triplet);
             println!("cargo:rustc-link-search=native={}", lib_path);
 
             // Enlazar bibliotecas estáticamente
@@ -134,7 +137,12 @@ fn configure_windows(is_static: bool) {
         } else {
             println!("cargo:warning=❌ Bibliotecas NO encontradas en: {}", lib_path);
             println!("cargo:warning=   Esperando: raw_r.lib, lcms2.lib, jpeg.lib, zlib.lib");
-            println!("cargo:warning=   Instala con: vcpkg install libraw:x64-windows-static lcms:x64-windows-static libjpeg-turbo:x64-windows-static zlib:x64-windows-static");
+            println!("cargo:warning=   Instala con: vcpkg install libraw:{}-windows-static lcms:{}-windows-static libjpeg-turbo:{}-windows-static zlib:{}-windows-static", 
+                if target.contains("aarch64") { "arm64" } else { "x64" },
+                if target.contains("aarch64") { "arm64" } else { "x64" },
+                if target.contains("aarch64") { "arm64" } else { "x64" },
+                if target.contains("aarch64") { "arm64" } else { "x64" }
+            );
             panic!("LibRaw libraries not found. Please install via vcpkg.");
         }
     } else {
