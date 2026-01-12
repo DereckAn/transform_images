@@ -167,36 +167,30 @@ jobs:
           name: frontend-build
           path: dist
 
-      - name: Setup Bun (standard)
+      - name: Verify dist folder downloaded
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "❌ Error: dist folder not found after download!"
+            exit 1
+          fi
+          echo "✅ dist folder found with $(find dist -type f | wc -l) files"
+        shell: bash
+
+      - name: Setup Node.js (for all platforms)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun (skip Windows ARM64)
         if: matrix.platform != 'windows-11-arm'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Try install Bun (Windows ARM64)
-        if: matrix.platform == 'windows-11-arm'
-        shell: pwsh
-        continue-on-error: true
-        run: |
-          Write-Host "Intentando instalar Bun para Windows ARM64..."
-          try {
-            irm bun.sh/install.ps1 | iex
-            bun --version
-            Write-Host "✅ Bun instalado correctamente"
-            echo "BUN_AVAILABLE=true" >> $env:GITHUB_ENV
-          } catch {
-            Write-Host "⚠️ Bun no disponible, usando npm como fallback"
-            echo "BUN_AVAILABLE=false" >> $env:GITHUB_ENV
-          }
-
-      - name: Setup Node.js (fallback)
-        if: matrix.platform == 'windows-11-arm' && env.BUN_AVAILABLE != 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
@@ -209,7 +203,6 @@ jobs:
           git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
           C:\vcpkg\bootstrap-vcpkg.bat
 
-          # Detectar arquitectura y usar el triplet correcto
           $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }
           C:\vcpkg\vcpkg install libraw:${arch}-windows-static lcms:${arch}-windows-static libjpeg-turbo:${arch}-windows-static zlib:${arch}-windows-static
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
@@ -235,7 +228,7 @@ jobs:
             rust-${{ runner.os }}-${{ matrix.target }}-
 
       - name: Cache Bun
-        if: matrix.platform != 'windows-11-arm' || env.BUN_AVAILABLE == 'true'
+        if: matrix.platform != 'windows-11-arm'
         uses: actions/cache@v4
         with:
           path: |
@@ -246,7 +239,7 @@ jobs:
             bun-${{ runner.os }}-
 
       - name: Cache npm
-        if: matrix.platform == 'windows-11-arm' && env.BUN_AVAILABLE != 'true'
+        if: matrix.platform == 'windows-11-arm'
         uses: actions/cache@v4
         with:
           path: |
@@ -257,30 +250,30 @@ jobs:
             npm-${{ runner.os }}-
 
       - name: Install dependencies (Bun)
-        if: matrix.platform != 'windows-11-arm' || env.BUN_AVAILABLE == 'true'
+        if: matrix.platform != 'windows-11-arm'
         run: bun install --frozen-lockfile
 
-      - name: Install dependencies (npm)
-        if: matrix.platform == 'windows-11-arm' && env.BUN_AVAILABLE != 'true'
+      - name: Install dependencies (npm - Windows ARM64)
+        if: matrix.platform == 'windows-11-arm'
         run: npm ci
 
       - name: Build Tauri app (Bun)
-        if: matrix.platform != 'windows-11-arm' || env.BUN_AVAILABLE == 'true'
+        if: matrix.platform != 'windows-11-arm'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_SKIP_BUILD_FRONTEND: "true"
-        run: bun run tauri build --features static
+        run: bun run tauri build --target ${{ matrix.target }} --features static
 
-      - name: Build Tauri app (npm)
-        if: matrix.platform == 'windows-11-arm' && env.BUN_AVAILABLE != 'true'
+      - name: Build Tauri app (npm - Windows ARM64)
+        if: matrix.platform == 'windows-11-arm'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_SKIP_BUILD_FRONTEND: "true"
-        run: npm run tauri build -- --features static
+        run: npm run tauri build -- --target ${{ matrix.target }} --features static
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -334,26 +327,24 @@ jobs:
           # Windows x64 (NSIS - recomendado para updater)
           copy_file "x86_64-pc-windows-msvc" "*x64-setup.exe" "${APP}-${VERSION}-Windows-x64-Setup.exe"
           copy_file "x86_64-pc-windows-msvc" "*x64-setup.exe.sig" "${APP}-${VERSION}-Windows-x64-Setup.exe.sig"
-          # Windows x64 MSI (opcional, solo si se compila en Windows)
           copy_file "x86_64-pc-windows-msvc" "*x64_en-US.msi" "${APP}-${VERSION}-Windows-x64.msi"
 
           # Windows ARM64 (NSIS)
           copy_file "aarch64-pc-windows-msvc" "*arm64-setup.exe" "${APP}-${VERSION}-Windows-ARM64-Setup.exe"
           copy_file "aarch64-pc-windows-msvc" "*arm64-setup.exe.sig" "${APP}-${VERSION}-Windows-ARM64-Setup.exe.sig"
-          # Windows ARM64 MSI (opcional)
           copy_file "aarch64-pc-windows-msvc" "*arm64_en-US.msi" "${APP}-${VERSION}-Windows-ARM64.msi"
 
-          # Linux x64 (NO genera .sig - updater no soportado)
+          # Linux x64
           copy_file "x86_64-unknown-linux-gnu" "*.AppImage" "${APP}-${VERSION}-Linux-x64.AppImage"
           copy_file "x86_64-unknown-linux-gnu" "*.deb" "${APP}-${VERSION}-Linux-x64.deb"
           copy_file "x86_64-unknown-linux-gnu" "*.rpm" "${APP}-${VERSION}-Linux-x64.rpm"
 
-          # Linux ARM64 (NO genera .sig - updater no soportado)
+          # Linux ARM64
           copy_file "aarch64-unknown-linux-gnu" "*.AppImage" "${APP}-${VERSION}-Linux-ARM64.AppImage"
           copy_file "aarch64-unknown-linux-gnu" "*.deb" "${APP}-${VERSION}-Linux-ARM64.deb"
           copy_file "aarch64-unknown-linux-gnu" "*.rpm" "${APP}-${VERSION}-Linux-ARM64.rpm"
 
-          # Generar checksums SHA256 para verificación de integridad
+          # Generar checksums SHA256
           (cd release-assets && sha256sum * > SHA256SUMS 2>/dev/null || true)
 
       - name: Generate latest.json
