@@ -2,7 +2,7 @@ name: Build and Release
 
 on:
   push:
-    branches: [main, test-workflow] # Agregada rama de testing
+    branches: [main, test-workflow]
     tags:
       - "v*"
   pull_request:
@@ -48,14 +48,16 @@ jobs:
             liblcms2-dev \
             libjpeg-dev
 
-      - name: Cache cargo
+      - name: Cache Rust
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-
 
       - name: Run tests
         run: cd src-tauri && cargo test --lib --verbose
@@ -119,65 +121,62 @@ jobs:
       matrix:
         include:
           - name: macOS-Intel
-            platform: macos-13
+            platform: macos-15-intel
             target: x86_64-apple-darwin
-            args: --features static
           - name: macOS-AppleSilicon
             platform: macos-latest
             target: aarch64-apple-darwin
-            args: --features static
           - name: Windows-x64
             platform: windows-latest
             target: x86_64-pc-windows-msvc
-            args: --features static
           - name: Windows-ARM64
             platform: windows-11-arm
             target: aarch64-pc-windows-msvc
-            args: --features static
           - name: Linux-x64
             platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            args: ""
           - name: Linux-ARM64
             platform: ubuntu-22.04-arm
             target: aarch64-unknown-linux-gnu
-            args: ""
 
     runs-on: ${{ matrix.platform }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Bun
+      - name: Download frontend bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: dist
+
+      - name: Setup Bun (standard)
         if: matrix.platform != 'windows-11-arm'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Setup Bun (manual for Windows ARM64)
+      - name: Try install Bun (Windows ARM64)
         if: matrix.platform == 'windows-11-arm'
-        shell: powershell
+        shell: pwsh
+        continue-on-error: true
         run: |
-          # Descargar Bun para Windows ARM64
-          $BUN_VERSION = "latest"
-          $BUN_URL = "https://github.com/oven-sh/bun/releases/latest/download/bun-windows-aarch64.zip"
+          Write-Host "Intentando instalar Bun para Windows ARM64..."
+          try {
+            irm bun.sh/install.ps1 | iex
+            bun --version
+            Write-Host "✅ Bun instalado correctamente"
+            echo "BUN_AVAILABLE=true" >> $env:GITHUB_ENV
+          } catch {
+            Write-Host "⚠️ Bun no disponible, usando npm como fallback"
+            echo "BUN_AVAILABLE=false" >> $env:GITHUB_ENV
+          }
 
-          Write-Host "Descargando Bun para Windows ARM64..."
-          Invoke-WebRequest -Uri $BUN_URL -OutFile bun.zip
-
-          Write-Host "Extrayendo Bun..."
-          Expand-Archive -Path bun.zip -DestinationPath $env:TEMP\bun -Force
-
-          Write-Host "Instalando Bun..."
-          $BUN_INSTALL = "$env:USERPROFILE\.bun"
-          New-Item -ItemType Directory -Force -Path "$BUN_INSTALL\bin" | Out-Null
-          Copy-Item "$env:TEMP\bun\bun-windows-aarch64\bun.exe" "$BUN_INSTALL\bin\bun.exe" -Force
-
-          # Agregar al PATH
-          echo "$BUN_INSTALL\bin" >> $env:GITHUB_PATH
-
-          Write-Host "✅ Bun instalado correctamente"
-          & "$BUN_INSTALL\bin\bun.exe" --version
+      - name: Setup Node.js (fallback)
+        if: matrix.platform == 'windows-11-arm' && env.BUN_AVAILABLE != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -207,22 +206,64 @@ jobs:
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
             libraw-dev liblcms2-dev libjpeg-dev
 
-      - name: Cache cargo
+      - name: Cache Rust
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: rust-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-${{ matrix.target }}-
 
-      - name: Build Tauri app
+      - name: Cache Bun
+        if: matrix.platform != 'windows-11-arm' || env.BUN_AVAILABLE == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - name: Cache npm
+        if: matrix.platform == 'windows-11-arm' && env.BUN_AVAILABLE != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
+
+      - name: Install dependencies (Bun)
+        if: matrix.platform != 'windows-11-arm' || env.BUN_AVAILABLE == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Install dependencies (npm)
+        if: matrix.platform == 'windows-11-arm' && env.BUN_AVAILABLE != 'true'
+        run: npm ci
+
+      - name: Build Tauri app (Bun)
+        if: matrix.platform != 'windows-11-arm' || env.BUN_AVAILABLE == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_SKIP_BUILD_FRONTEND: "true"
-        run: bun run tauri build ${{ matrix.args }}
+        run: bun run tauri build --features static
+
+      - name: Build Tauri app (npm)
+        if: matrix.platform == 'windows-11-arm' && env.BUN_AVAILABLE != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SKIP_BUILD_FRONTEND: "true"
+        run: npm run tauri build -- --features static
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -347,7 +388,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*
-          draft: ${{ !startsWith(github.ref, 'refs/tags/v') }} # Draft si NO es un tag
+          draft: false
           prerelease: false
           body: |
             ## 📦 ${{ env.APP_NAME }} ${{ github.ref_name }}
