@@ -23,27 +23,27 @@
   export let onResetTransformations: () => void;
 </script>
 
-<aside class="flex w-80 flex-col pl-4 gap-4 bg-background">
-  <h3
-    class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2"
-  >
-    Optimization Settings
-  </h3>
+<aside class="flex w-80 flex-col border-r border-slate-800 bg-background">
+  <div class="flex flex-col gap-4 p-6 overflow-y-auto scrollbar-thin h-full">
+    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+      Optimization Settings
+    </h3>
 
-  <QualitySlider bind:quality />
-  <FormatSelector bind:outputFormat />
-  <OutputDirectoryPicker {outputDirectory} {onSelectOutputDir} />
-  <MetadataOptions bind:preserveMetadata bind:overwriteExisting />
+    <QualitySlider bind:quality />
+    <FormatSelector bind:outputFormat />
+    <OutputDirectoryPicker {outputDirectory} {onSelectOutputDir} />
+    <MetadataOptions bind:preserveMetadata bind:overwriteExisting />
 
-  <TransformationsPanel
-    bind:showTransformations
-    bind:resizeWidth
-    bind:resizeHeight
-    bind:preserveAspectRatio
-    bind:resizeFilter
-    bind:rotation
-    bind:flipHorizontal
-    bind:flipVertical
-    {onResetTransformations}
-  />
+    <TransformationsPanel
+      bind:showTransformations
+      bind:resizeWidth
+      bind:resizeHeight
+      bind:preserveAspectRatio
+      bind:resizeFilter
+      bind:rotation
+      bind:flipHorizontal
+      bind:flipVertical
+      {onResetTransformations}
+    />
+  </div>
 </aside>
