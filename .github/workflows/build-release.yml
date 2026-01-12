@@ -106,6 +106,15 @@ jobs:
         if: steps.cache-frontend.outputs.cache-hit != 'true'
         run: bun run build
 
+      - name: Verify dist folder exists
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "❌ Error: dist folder not found!"
+            exit 1
+          fi
+          echo "✅ dist folder found with $(find dist -type f | wc -l) files"
+          ls -la dist/
+
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
         with:
