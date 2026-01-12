@@ -23,9 +23,9 @@
   export let onResetTransformations: () => void;
 </script>
 
-<aside class="flex w-80 flex-col border-r border-slate-800 bg-background">
-  <div class="flex flex-col gap-4 p-6 overflow-y-auto scrollbar-thin h-full">
-    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+<aside class="flex w-80 flex-col bg-background">
+  <div class="flex flex-col gap-4 pl-4 pb-4 overflow-y-auto scrollbar-thin h-full">
+    <h3 class="text-sm font-semibold text-white bg-green-600/50 rounded-full px-4 uppercase tracking-wider">
       Optimization Settings
     </h3>
 

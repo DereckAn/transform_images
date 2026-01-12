@@ -11,8 +11,8 @@
 </script>
 
 <div class="flex flex-col gap-4">
-  <button on:click={() => showTransformations = !showTransformations} class="flex items-center justify-between text-sm font-semibold text-red-400 uppercase tracking-wider hover:text-slate-300 transition-colors">
-    <span>🔄 Transformations</span>
+  <button on:click={() => showTransformations = !showTransformations} class="flex px-4 items-center justify-between text-sm font-semibold text-red-400 bg-amber-400/40 uppercase tracking-wider transition-colors rounded-full">
+    <span>Transformations</span>
     <span class="transform transition-transform" style="transform: rotate({showTransformations ? 0 : -90}deg)">▼</span>
   </button>
 
