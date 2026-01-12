@@ -98,9 +98,35 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Bun
+        if: matrix.platform != 'windows-11-arm'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Setup Bun (manual for Windows ARM64)
+        if: matrix.platform == 'windows-11-arm'
+        shell: powershell
+        run: |
+          # Descargar Bun para Windows ARM64
+          $BUN_VERSION = "latest"
+          $BUN_URL = "https://github.com/oven-sh/bun/releases/latest/download/bun-windows-aarch64.zip"
+
+          Write-Host "Descargando Bun para Windows ARM64..."
+          Invoke-WebRequest -Uri $BUN_URL -OutFile bun.zip
+
+          Write-Host "Extrayendo Bun..."
+          Expand-Archive -Path bun.zip -DestinationPath $env:TEMP\bun -Force
+
+          Write-Host "Instalando Bun..."
+          $BUN_INSTALL = "$env:USERPROFILE\.bun"
+          New-Item -ItemType Directory -Force -Path "$BUN_INSTALL\bin" | Out-Null
+          Copy-Item "$env:TEMP\bun\bun-windows-aarch64\bun.exe" "$BUN_INSTALL\bin\bun.exe" -Force
+
+          # Agregar al PATH
+          echo "$BUN_INSTALL\bin" >> $env:GITHUB_PATH
+
+          Write-Host "✅ Bun instalado correctamente"
+          & "$BUN_INSTALL\bin\bun.exe" --version
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
