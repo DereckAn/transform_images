@@ -66,8 +66,6 @@ jobs:
     name: Build Frontend Bundle
     needs: test
     runs-on: ubuntu-latest
-    outputs:
-      cache-hit: ${{ steps.cache-frontend.outputs.cache-hit }}
     steps:
       - uses: actions/checkout@v4
 
@@ -92,18 +90,29 @@ jobs:
           restore-keys: |
             svelte-build-
 
+      - name: Check if build needed
+        id: check-build
+        run: |
+          if [ -d "dist" ] && [ "$(find dist -type f | wc -l)" -gt 0 ]; then
+            echo "✅ dist folder exists with files (from cache)"
+            echo "needs_build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "🔨 dist folder missing or empty, build needed"
+            echo "needs_build=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Bun
-        if: steps.cache-frontend.outputs.cache-hit != 'true'
+        if: steps.check-build.outputs.needs_build == 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Install dependencies
-        if: steps.cache-frontend.outputs.cache-hit != 'true'
+        if: steps.check-build.outputs.needs_build == 'true'
         run: bun install --frozen-lockfile
 
       - name: Build frontend
-        if: steps.cache-frontend.outputs.cache-hit != 'true'
+        if: steps.check-build.outputs.needs_build == 'true'
         run: bun run build
 
       - name: Verify dist folder exists
@@ -113,7 +122,6 @@ jobs:
             exit 1
           fi
           echo "✅ dist folder found with $(find dist -type f | wc -l) files"
-          ls -la dist/
 
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
