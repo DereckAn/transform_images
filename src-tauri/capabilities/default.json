@@ -8,6 +8,7 @@
     "core:window:default",
     "core:window:allow-set-title",
     "core:window:allow-close",
+    "core:window:allow-set-decorations",
     "core:event:default",
     "core:event:allow-emit",
     "core:event:allow-listen",
@@ -16,6 +17,10 @@
     "dialog:allow-save",
     "core:path:default",
     "core:path:allow-resolve",
-    "core:path:allow-resolve-directory"
+    "core:path:allow-resolve-directory",
+    "updater:default",
+    "updater:allow-check",
+    "process:default",
+    "process:allow-restart"
   ]
 }

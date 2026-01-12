@@ -22,12 +22,11 @@
     "windows": [
       {
         "title": "Quak Images",
-        "width": 1200,
-        "height": 900,
-        "minWidth": 800,
-        "minHeight": 600,
+        "width": 900,
+        "height": 600,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "transparent": true
       }
     ],
     "security": {
