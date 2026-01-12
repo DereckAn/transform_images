@@ -1,21 +1,61 @@
 <script lang="ts">
   export let onBrowseFiles: () => void;
   export let onBrowseFolder: () => void;
+
+  let isDragging = false;
+
+  function handleDragEnter(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    isDragging = true;
+    console.log("🎯 Drag enter detected");
+  }
+
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function handleDragLeave(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    isDragging = false;
+    console.log("👋 Drag leave detected");
+  }
+
+  function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    isDragging = false;
+    console.log("📦 Drop detected (browser event)");
+    console.log("Files:", e.dataTransfer?.files);
+  }
 </script>
 
-<div class="flex items-center justify-center h-full">
+<div
+  class="flex items-center justify-center h-full"
+  on:dragenter={handleDragEnter}
+  on:dragover={handleDragOver}
+  on:dragleave={handleDragLeave}
+  on:drop={handleDrop}
+>
   <div class="w-full max-w-2xl">
     <div
-      class="flex flex-col items-center gap-6 rounded-xl border-2 border-dashed border-slate-700 px-6 py-20 hover:border-slate-600 hover:bg-slate-900/20 transition-all cursor-pointer"
+      class="flex flex-col items-center gap-6 rounded-xl border-2 border-dashed {isDragging
+        ? 'border-blue-500 bg-blue-500/10'
+        : 'border-slate-700'} px-6 py-20 hover:border-slate-600 hover:bg-slate-900/20 transition-all cursor-pointer"
     >
       <div
-        class="flex items-center justify-center size-16 rounded-full bg-primary/20"
+        class="flex items-center justify-center size-16 rounded-full {isDragging
+          ? 'bg-blue-500/30'
+          : 'bg-primary/20'} transition-colors"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="4em"
           height="4em"
           viewBox="0 0 16 16"
+          class="{isDragging ? 'scale-110' : ''} transition-transform"
           ><g fill="white"
             ><path d="M4.502 9a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3" /><path
               d="M14.002 13a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2V5A2 2 0 0 1 2 3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-1.998 2M14 2H4a1 1 0 0 0-1 1h9.002a2 2 0 0 1 2 2v7A1 1 0 0 0 15 11V3a1 1 0 0 0-1-1M2.002 4a1 1 0 0 0-1 1v8l2.646-2.354a.5.5 0 0 1 .63-.062l2.66 1.773l3.71-3.71a.5.5 0 0 1 .577-.094l1.777 1.947V5a1 1 0 0 0-1-1z"
@@ -24,10 +64,16 @@
         >
       </div>
       <div class="flex flex-col items-center gap-2">
-        <p class="text-xl font-bold text-white text-center">Upload Images</p>
+        <p class="text-xl font-bold text-white text-center">
+          {isDragging ? "Drop images here!" : "Upload Images"}
+        </p>
         <p class="text-sm text-slate-400 text-center">
-          Drop your images here or click to browse files from your computer.
-          Supports PNG, JPEG, WebP, and 30+ RAW formats.
+          {#if isDragging}
+            Release to upload your images
+          {:else}
+            Drop your images here or click to browse files from your computer.
+            Supports PNG, JPEG, WebP, and 30+ RAW formats.
+          {/if}
         </p>
       </div>
       <div class="flex gap-3">
