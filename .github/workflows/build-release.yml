@@ -115,25 +115,6 @@ jobs:
           bun install --frozen-lockfile
           echo "✅ Dependencies installed"
 
-      - name: Debug - Check project structure
-        if: steps.check-build.outputs.needs_build == 'true'
-        run: |
-          echo "📁 Project structure:"
-          ls -la
-          echo ""
-          echo "📄 package.json scripts:"
-          cat package.json | grep -A 10 '"scripts"' || echo "No scripts found"
-          echo ""
-          echo "⚙️ vite.config.ts (if exists):"
-          if [ -f "vite.config.ts" ]; then
-            cat vite.config.ts | grep -A 5 "build:" || echo "No build config found"
-          fi
-          echo ""
-          echo "⚙️ svelte.config.js (if exists):"
-          if [ -f "svelte.config.js" ]; then
-            cat svelte.config.js | head -20
-          fi
-
       - name: Build frontend
         if: steps.check-build.outputs.needs_build == 'true'
         run: |
@@ -164,7 +145,7 @@ jobs:
             cp -r .svelte-kit/output/client dist
             echo "✅ Copied to dist"
           fi
-          
+
           # Si el build está en 'build' en lugar de 'dist', renombrar
           if [ -d "build" ] && [ ! -d "dist" ]; then
             echo "📦 Renaming build to dist..."
@@ -179,13 +160,6 @@ jobs:
             echo ""
             echo "Available directories:"
             ls -la
-            echo ""
-            echo "Checking common build output locations:"
-            for dir in build output .svelte-kit/output/client public; do
-              if [ -d "$dir" ]; then
-                echo "Found: $dir ($(find $dir -type f | wc -l) files)"
-              fi
-            done
             exit 1
           fi
           FILE_COUNT=$(find dist -type f 2>/dev/null | wc -l)
@@ -194,9 +168,6 @@ jobs:
             exit 1
           fi
           echo "✅ dist folder found with $FILE_COUNT files"
-          echo ""
-          echo "📁 dist contents (first 20 items):"
-          ls -lah dist | head -20
 
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
@@ -255,7 +226,7 @@ jobs:
           echo "✅ dist folder downloaded with $FILE_COUNT files"
         shell: bash
 
-      - name: Setup Node.js (for all platforms)
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -286,14 +257,59 @@ jobs:
           C:\vcpkg\vcpkg install libraw:${arch}-windows-static lcms:${arch}-windows-static libjpeg-turbo:${arch}-windows-static zlib:${arch}-windows-static
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
+      - name: Install Linux dependencies (x64)
+        if: runner.os == 'Linux' && matrix.target == 'x86_64-unknown-linux-gnu'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev libgtk-3-dev build-essential curl wget file \
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
-            libraw-dev liblcms2-dev libjpeg-dev
+            libraw-dev liblcms2-dev libjpeg-dev pkg-config
+
+          # Configurar variables de entorno para LibRaw estático
+          echo "LIBRAW_STATIC=1" >> $GITHUB_ENV
+          echo "RUSTFLAGS=-L /usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
+
+      - name: Install Linux dependencies (ARM64)
+        if: runner.os == 'Linux' && matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          # Configurar repositorios ARM64
+          sudo dpkg --add-architecture arm64
+          sudo sed -i 's/deb http/deb [arch=amd64] http/g' /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $(lsb_release -cs) main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $(lsb_release -cs)-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+
+          sudo apt-get update
+
+          # Instalar dependencias nativas (amd64)
+          sudo apt-get install -y \
+            build-essential curl wget file pkg-config
+
+          # Instalar cross-compilation tools
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu
+
+          # Instalar dependencias ARM64
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev:arm64 \
+            libgtk-3-dev:arm64 \
+            libxdo-dev:arm64 \
+            libssl-dev:arm64 \
+            libayatana-appindicator3-dev:arm64 \
+            librsvg2-dev:arm64 \
+            libraw-dev:arm64 \
+            liblcms2-dev:arm64 \
+            libjpeg-dev:arm64
+
+          # Configurar variables de entorno para cross-compilation
+          echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig" >> $GITHUB_ENV
+          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          echo "CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++" >> $GITHUB_ENV
+          echo "LIBRAW_STATIC=1" >> $GITHUB_ENV
+          echo "RUSTFLAGS=-L /usr/lib/aarch64-linux-gnu" >> $GITHUB_ENV
 
       - name: Cache Rust
         uses: actions/cache@v4
@@ -324,7 +340,7 @@ jobs:
           path: |
             ~/.npm
             node_modules
-          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json', 'bun.lockb') }}
           restore-keys: |
             npm-${{ runner.os }}-
 
@@ -334,7 +350,7 @@ jobs:
 
       - name: Install dependencies (npm - Windows ARM64)
         if: matrix.platform == 'windows-11-arm'
-        run: npm ci
+        run: npm install
 
       - name: Build Tauri app (Bun)
         if: matrix.platform != 'windows-11-arm'
@@ -403,7 +419,7 @@ jobs:
           copy_file "aarch64-apple-darwin" "*.app.tar.gz" "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
           copy_file "aarch64-apple-darwin" "*.app.tar.gz.sig" "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz.sig"
 
-          # Windows x64 (NSIS - recomendado para updater)
+          # Windows x64 (NSIS)
           copy_file "x86_64-pc-windows-msvc" "*x64-setup.exe" "${APP}-${VERSION}-Windows-x64-Setup.exe"
           copy_file "x86_64-pc-windows-msvc" "*x64-setup.exe.sig" "${APP}-${VERSION}-Windows-x64-Setup.exe.sig"
           copy_file "x86_64-pc-windows-msvc" "*x64_en-US.msi" "${APP}-${VERSION}-Windows-x64.msi"
