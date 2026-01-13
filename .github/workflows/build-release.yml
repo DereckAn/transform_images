@@ -88,9 +88,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dist
-          key: svelte-build-${{ steps.frontend-hash.outputs.hash }}
+          key: svelte-build-v2-${{ steps.frontend-hash.outputs.hash }}
           restore-keys: |
-            svelte-build-
+            svelte-build-v2-
 
       - name: Check if build needed
         id: check-build
