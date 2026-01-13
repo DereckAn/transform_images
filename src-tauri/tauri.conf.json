@@ -11,7 +11,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE0MzRCMjgxQzkxOTdBNDAKUldSQWVobkpnYkkwRkNwbDlGTndacFJJY2FPSWNJaDZxOGlDSW9HN3c4R25ta1pQWXVRZVJvMjcK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ3MzlBMEIwNTg3MTMxRDQKUldUVU1YRllzS0E1UjVxKzhTYnFnTXEwOUVSUU9MMUNOZm12NUJHV2FjanN3eTREeHVXTXIrMm8K",
       "endpoints": [
         "https://github.com/DereckAn/transform_images/releases/latest/download/latest.json"
       ]

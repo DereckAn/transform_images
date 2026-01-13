@@ -46,7 +46,8 @@ jobs:
             librsvg2-dev \
             libraw-dev \
             liblcms2-dev \
-            libjpeg-dev
+            libjpeg-dev \
+            xdg-utils
 
       - name: Cache Rust
         uses: actions/cache@v4
@@ -304,7 +305,7 @@ jobs:
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev libgtk-3-dev build-essential curl wget file \
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
-            libraw-dev liblcms2-dev libjpeg-dev
+            libraw-dev liblcms2-dev libjpeg-dev xdg-utils
 
       - name: Cache Rust
         uses: actions/cache@v4

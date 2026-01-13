@@ -21,10 +21,10 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 # Tauri Core
-tauri = { version = "2", features = ["macos-private-api", "protocol-asset"] }
+tauri = { version = "2.9.1", features = ["macos-private-api", "protocol-asset"] }
 tauri-plugin-opener = "2"
-tauri-plugin-dialog = "2"
-tauri-plugin-updater = "2.0.0-beta.0"
+tauri-plugin-dialog = "2.5"
+tauri-plugin-updater = "2.9.0"
 tauri-plugin-process = "2"
 
 # Serialization
