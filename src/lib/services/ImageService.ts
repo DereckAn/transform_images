@@ -1,12 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { listen, type UnlistenFn, } from "@tauri-apps/api/event";
 import type {
   ImageInfo,
   OptimizationOptions,
   ProcessedImage,
   ProgressPayload,
   TransformationOptions,
-} from "../../models/types";
+} from "../models/types";
 
 export interface BatchProcessRequest {
   imagePaths: string[];

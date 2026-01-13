@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 target/
+build
 
 node_modules
 dist
@@ -25,3 +26,4 @@ dist-ssr
 *.sw?
 .vscode
 .env
+.svelte-kit

@@ -2,7 +2,7 @@ name: Build and Release
 
 on:
   push:
-    branches: [main]
+    branches: [main, test-workflow]
     tags:
       - "v*"
   pull_request:
@@ -46,38 +46,202 @@ jobs:
             librsvg2-dev \
             libraw-dev \
             liblcms2-dev \
-            libjpeg-dev
+            libjpeg-dev \
+            xdg-utils
 
-      - name: Cache cargo
+      - name: Cache Rust
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-
 
       - name: Run tests
         run: cd src-tauri && cargo test --lib --verbose
 
+  build-frontend:
+    name: Build Frontend Bundle
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute frontend hash
+        id: frontend-hash
+        run: |
+          HASH=$(git ls-files \
+            'src/**' \
+            'package.json' \
+            'bun.lockb' \
+            'svelte.config.js' \
+            'vite.config.ts' \
+            'tsconfig.json' 2>/dev/null | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+          echo "📦 Frontend hash: $HASH"
+
+      - name: Restore cached build
+        id: cache-frontend
+        uses: actions/cache@v4
+        with:
+          path: dist
+          key: svelte-build-${{ steps.frontend-hash.outputs.hash }}
+          restore-keys: |
+            svelte-build-
+
+      - name: Check if build needed
+        id: check-build
+        run: |
+          if [ -d "dist" ] && [ "$(find dist -type f 2>/dev/null | wc -l)" -gt 0 ]; then
+            echo "✅ dist folder exists with files (from cache)"
+            echo "needs_build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "🔨 dist folder missing or empty, build needed"
+            echo "needs_build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Bun
+        if: steps.check-build.outputs.needs_build == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        if: steps.check-build.outputs.needs_build == 'true'
+        run: |
+          echo "📦 Installing dependencies..."
+          bun install --frozen-lockfile
+          echo "✅ Dependencies installed"
+
+      - name: Debug - Check project structure
+        if: steps.check-build.outputs.needs_build == 'true'
+        run: |
+          echo "📁 Project structure:"
+          ls -la
+          echo ""
+          echo "📄 package.json scripts:"
+          cat package.json | grep -A 10 '"scripts"' || echo "No scripts found"
+          echo ""
+          echo "⚙️ vite.config.ts (if exists):"
+          if [ -f "vite.config.ts" ]; then
+            cat vite.config.ts | grep -A 5 "build:" || echo "No build config found"
+          fi
+          echo ""
+          echo "⚙️ svelte.config.js (if exists):"
+          if [ -f "svelte.config.js" ]; then
+            cat svelte.config.js | head -20
+          fi
+
+      - name: Build frontend
+        if: steps.check-build.outputs.needs_build == 'true'
+        run: |
+          echo "🔨 Building frontend..."
+          bun run build
+          echo "✅ Build command completed"
+
+      - name: Debug - Check build output
+        if: steps.check-build.outputs.needs_build == 'true'
+        run: |
+          echo "📂 Checking for output directories..."
+          for dir in dist build output .svelte-kit/output; do
+            if [ -d "$dir" ]; then
+              echo "✅ Found: $dir"
+              echo "   Contents:"
+              ls -lah "$dir" | head -20
+            else
+              echo "❌ Not found: $dir"
+            fi
+          done
+
+      - name: Copy build output to dist (if needed)
+        if: steps.check-build.outputs.needs_build == 'true'
+        run: |
+          # Si SvelteKit genera en .svelte-kit/output, copiarlo a dist
+          if [ -d ".svelte-kit/output/client" ] && [ ! -d "dist" ]; then
+            echo "📦 Copying SvelteKit output to dist..."
+            cp -r .svelte-kit/output/client dist
+            echo "✅ Copied to dist"
+          fi
+          
+          # Si el build está en 'build' en lugar de 'dist', renombrar
+          if [ -d "build" ] && [ ! -d "dist" ]; then
+            echo "📦 Renaming build to dist..."
+            mv build dist
+            echo "✅ Renamed to dist"
+          fi
+
+      - name: Verify dist folder exists
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "❌ Error: dist folder not found after build!"
+            echo ""
+            echo "Available directories:"
+            ls -la
+            echo ""
+            echo "Checking common build output locations:"
+            for dir in build output .svelte-kit/output/client public; do
+              if [ -d "$dir" ]; then
+                echo "Found: $dir ($(find $dir -type f | wc -l) files)"
+              fi
+            done
+            exit 1
+          fi
+          FILE_COUNT=$(find dist -type f 2>/dev/null | wc -l)
+          if [ "$FILE_COUNT" -eq 0 ]; then
+            echo "❌ Error: dist folder is empty!"
+            exit 1
+          fi
+          echo "✅ dist folder found with $FILE_COUNT files"
+          echo ""
+          echo "📁 dist contents (first 20 items):"
+          ls -lah dist | head -20
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: dist
+          retention-days: 3
+          if-no-files-found: error
+
   build-tauri:
     name: Build (${{ matrix.name }})
-    needs: test
+    needs: [test, build-frontend]
     strategy:
       fail-fast: false
       matrix:
         include:
+          - name: macOS-Intel
+            platform: macos-15-intel
+            target: x86_64-apple-darwin
+            args: --features static
+
           - name: macOS-AppleSilicon
-            platform: macos-15
+            platform: macos-latest
             target: aarch64-apple-darwin
-            args: --target aarch64-apple-darwin --features static
+            args: --features static
+
           - name: Windows-x64
             platform: windows-latest
             target: x86_64-pc-windows-msvc
             args: --features static
+
+          - name: Windows-ARM64
+            platform: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            args: --features static
+
           - name: Linux-x64
             platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            args: ""
+
+          - name: Linux-ARM64
+            platform: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-gnu
             args: ""
 
     runs-on: ${{ matrix.platform }}
@@ -85,7 +249,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Bun
+      - name: Download frontend bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: dist
+
+      - name: Verify dist folder downloaded
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "❌ Error: dist folder not found after download!"
+            echo "Available files:"
+            ls -la
+            exit 1
+          fi
+          FILE_COUNT=$(find dist -type f 2>/dev/null | wc -l)
+          echo "✅ dist folder downloaded with $FILE_COUNT files"
+        shell: bash
+
+      - name: Setup Node.js (for all platforms)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun (skip Windows ARM64)
+        if: matrix.platform != 'windows-11-arm'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -105,7 +293,9 @@ jobs:
         run: |
           git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
           C:\vcpkg\bootstrap-vcpkg.bat
-          C:\vcpkg\vcpkg install libraw:x64-windows-static lcms:x64-windows-static libjpeg-turbo:x64-windows-static zlib:x64-windows-static
+
+          $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }
+          C:\vcpkg\vcpkg install libraw:${arch}-windows-static lcms:${arch}-windows-static libjpeg-turbo:${arch}-windows-static zlib:${arch}-windows-static
           echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
       - name: Install Linux dependencies
@@ -115,26 +305,66 @@ jobs:
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev libgtk-3-dev build-essential curl wget file \
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
-            libraw-dev liblcms2-dev libjpeg-dev
+            libraw-dev liblcms2-dev libjpeg-dev xdg-utils
 
-      - name: Cache cargo
+      - name: Cache Rust
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: rust-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-${{ matrix.target }}-
 
-      - name: Install frontend dependencies
+      - name: Cache Bun
+        if: matrix.platform != 'windows-11-arm'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - name: Cache npm
+        if: matrix.platform == 'windows-11-arm'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json', 'bun.lockb') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
+
+      - name: Install dependencies (Bun)
+        if: matrix.platform != 'windows-11-arm'
         run: bun install --frozen-lockfile
 
-      - name: Build Tauri app
+      - name: Install dependencies (npm - Windows ARM64)
+        if: matrix.platform == 'windows-11-arm'
+        run: npm install
+
+      - name: Build Tauri app (Bun)
+        if: matrix.platform != 'windows-11-arm'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: bun run tauri build ${{ matrix.args }}
+          TAURI_SKIP_BUILD_FRONTEND: "true"
+        run: bun run tauri build --target ${{ matrix.target }} ${{ matrix.args }}
+
+      - name: Build Tauri app (npm - Windows ARM64)
+        if: matrix.platform == 'windows-11-arm'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SKIP_BUILD_FRONTEND: "true"
+        run: npm run tauri build -- --target ${{ matrix.target }} ${{ matrix.args }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -170,24 +400,42 @@ jobs:
             if [ -n "$file" ] && [ -f "$file" ]; then
               cp "$file" "release-assets/${dest}"
               echo "✅ ${dest}"
+            else
+              echo "⚠️ No encontrado: $pattern en tauri-${target}"
             fi
           }
+
+          # macOS Intel
+          copy_file "x86_64-apple-darwin" "*.dmg" "${APP}-${VERSION}-macOS-Intel.dmg"
+          copy_file "x86_64-apple-darwin" "*.app.tar.gz" "${APP}-${VERSION}-macOS-Intel.app.tar.gz"
+          copy_file "x86_64-apple-darwin" "*.app.tar.gz.sig" "${APP}-${VERSION}-macOS-Intel.app.tar.gz.sig"
 
           # macOS Apple Silicon
           copy_file "aarch64-apple-darwin" "*.dmg" "${APP}-${VERSION}-macOS-AppleSilicon.dmg"
           copy_file "aarch64-apple-darwin" "*.app.tar.gz" "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
           copy_file "aarch64-apple-darwin" "*.app.tar.gz.sig" "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz.sig"
 
-          # Windows
+          # Windows x64 (NSIS - recomendado para updater)
           copy_file "x86_64-pc-windows-msvc" "*x64-setup.exe" "${APP}-${VERSION}-Windows-x64-Setup.exe"
           copy_file "x86_64-pc-windows-msvc" "*x64-setup.exe.sig" "${APP}-${VERSION}-Windows-x64-Setup.exe.sig"
+          copy_file "x86_64-pc-windows-msvc" "*x64_en-US.msi" "${APP}-${VERSION}-Windows-x64.msi"
 
+          # Windows ARM64 (NSIS)
+          copy_file "aarch64-pc-windows-msvc" "*arm64-setup.exe" "${APP}-${VERSION}-Windows-ARM64-Setup.exe"
+          copy_file "aarch64-pc-windows-msvc" "*arm64-setup.exe.sig" "${APP}-${VERSION}-Windows-ARM64-Setup.exe.sig"
+          copy_file "aarch64-pc-windows-msvc" "*arm64_en-US.msi" "${APP}-${VERSION}-Windows-ARM64.msi"
 
-          # Linux
+          # Linux x64
           copy_file "x86_64-unknown-linux-gnu" "*.AppImage" "${APP}-${VERSION}-Linux-x64.AppImage"
           copy_file "x86_64-unknown-linux-gnu" "*.deb" "${APP}-${VERSION}-Linux-x64.deb"
           copy_file "x86_64-unknown-linux-gnu" "*.rpm" "${APP}-${VERSION}-Linux-x64.rpm"
 
+          # Linux ARM64
+          copy_file "aarch64-unknown-linux-gnu" "*.AppImage" "${APP}-${VERSION}-Linux-ARM64.AppImage"
+          copy_file "aarch64-unknown-linux-gnu" "*.deb" "${APP}-${VERSION}-Linux-ARM64.deb"
+          copy_file "aarch64-unknown-linux-gnu" "*.rpm" "${APP}-${VERSION}-Linux-ARM64.rpm"
+
+          # Generar checksums SHA256
           (cd release-assets && sha256sum * > SHA256SUMS 2>/dev/null || true)
 
       - name: Generate latest.json
@@ -204,8 +452,10 @@ jobs:
             [ -f "$file" ] && cat "$file" || echo ""
           }
 
+          MACOS_INTEL_SIG=$(read_sig "${APP}-${VERSION}-macOS-Intel.app.tar.gz.sig")
           MACOS_ARM_SIG=$(read_sig "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz.sig")
-          WINDOWS_SIG=$(read_sig "${APP}-${VERSION}-Windows-x64-Setup.exe.sig")
+          WINDOWS_X64_SIG=$(read_sig "${APP}-${VERSION}-Windows-x64-Setup.exe.sig")
+          WINDOWS_ARM_SIG=$(read_sig "${APP}-${VERSION}-Windows-ARM64-Setup.exe.sig")
 
           cat > release-assets/latest.json << EOF
           {
@@ -213,13 +463,21 @@ jobs:
             "notes": "See release notes on GitHub",
             "pub_date": "${PUB_DATE}",
             "platforms": {
+              "darwin-x86_64": {
+                "signature": "${MACOS_INTEL_SIG}",
+                "url": "${BASE_URL}/${APP}-${VERSION}-macOS-Intel.app.tar.gz"
+              },
               "darwin-aarch64": {
                 "signature": "${MACOS_ARM_SIG}",
                 "url": "${BASE_URL}/${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz"
               },
               "windows-x86_64": {
-                "signature": "${WINDOWS_SIG}",
+                "signature": "${WINDOWS_X64_SIG}",
                 "url": "${BASE_URL}/${APP}-${VERSION}-Windows-x64-Setup.exe"
+              },
+              "windows-aarch64": {
+                "signature": "${WINDOWS_ARM_SIG}",
+                "url": "${BASE_URL}/${APP}-${VERSION}-Windows-ARM64-Setup.exe"
               }
             }
           }
@@ -240,14 +498,21 @@ jobs:
 
             | Platform | Architecture | Download |
             |----------|-------------|----------|
+            | macOS | Intel | [.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-macOS-Intel.dmg) |
             | macOS | Apple Silicon | [.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-macOS-AppleSilicon.dmg) |
-            | Windows | x64 | [Setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64-Setup.exe) |
+            | Windows | x64 | [Setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64-Setup.exe) / [.msi](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64.msi) |
+            | Windows | ARM64 | [Setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-ARM64-Setup.exe) / [.msi](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-ARM64.msi) |
             | Linux | x64 | [.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.AppImage) / [.deb](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.deb) / [.rpm](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.rpm) |
+            | Linux | ARM64 | [.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-ARM64.AppImage) / [.deb](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-ARM64.deb) / [.rpm](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-ARM64.rpm) |
 
             ### 🔄 Auto-Update
-            If you already have the app installed, it will notify you when updates are available!
+            If you already have the app installed, it will automatically check for updates and notify you when a new version is available!
 
-            ### 🍎 macOS Note
+            **Supported platforms:** macOS (Intel & Apple Silicon), Windows (x64 & ARM64)
+
+            **Note:** Linux users need to manually download and install updates.
+
+            ### 🍎 macOS Installation Note
             If you see "app is damaged", run:
             ```bash
             sudo xattr -d com.apple.quarantine "/Applications/quakimages.app"
