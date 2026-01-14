@@ -237,7 +237,7 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install libraw little-cms2 jpeg-turbo
 
-- name: Install Windows ARM64 libraries (only if needed)
+      - name: Install Windows ARM64 libraries (only if needed)
         if: runner.os == 'Windows' && matrix.target == 'aarch64-pc-windows-msvc'
         shell: powershell
         run: |
@@ -308,28 +308,6 @@ jobs:
       - name: Install dependencies (npm - Windows ARM64)
         if: matrix.platform == 'windows-11-arm'
         run: npm install
-
-      - name: Debug - Verify dist before build
-        shell: bash
-        run: |
-          echo "📂 Current directory: $(pwd)"
-          echo "📂 Contents of root:"
-          ls -la
-          echo "📂 Checking dist folder:"
-          if [ -d "dist" ]; then
-            echo "✅ dist folder exists"
-            echo "📄 Contents of dist:"
-            ls -la dist/
-            if [ -f "dist/index.html" ]; then
-              echo "✅ index.html found"
-            else
-              echo "❌ ERROR: index.html NOT found in dist!"
-              exit 1
-            fi
-          else
-            echo "❌ ERROR: dist folder does not exist!"
-            exit 1
-          fi
 
       - name: Build Tauri app (Bun)
         if: matrix.platform != 'windows-11-arm'
