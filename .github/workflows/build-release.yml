@@ -56,9 +56,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: rust-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          key: rust-v2-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            rust-${{ runner.os }}-
+            rust-v2-${{ runner.os }}-
 
       - name: Run tests
         run: cd src-tauri && cargo test --lib --verbose
@@ -88,9 +88,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dist
-          key: svelte-build-v2-${{ steps.frontend-hash.outputs.hash }}
+          key: svelte-build-v3-${{ steps.frontend-hash.outputs.hash }}
           restore-keys: |
-            svelte-build-v2-
+            svelte-build-v3-
 
       - name: Check if build needed
         id: check-build
@@ -179,11 +179,6 @@ jobs:
             target: x86_64-pc-windows-msvc
             args: --features static
 
-          - name: Windows-ARM64
-            platform: windows-11-arm
-            target: aarch64-pc-windows-msvc
-            args: --features static
-
           - name: Linux-x64
             platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
@@ -237,28 +232,6 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install libraw little-cms2 jpeg-turbo
 
-      - name: Install Windows ARM64 libraries (only if needed)
-        if: runner.os == 'Windows' && matrix.target == 'aarch64-pc-windows-msvc'
-        shell: powershell
-        run: |
-          # Check if ARM64 libraries already exist in repo
-          $libsDir = "src-tauri\vendor\libraw-sys\libs\windows\arm64"
-          if (!(Test-Path "$libsDir\raw_r.lib")) {
-            Write-Host "📦 ARM64 libraries not in repo, compiling with vcpkg..."
-            git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
-            C:\vcpkg\bootstrap-vcpkg.bat
-            C:\vcpkg\vcpkg install libraw:arm64-windows-static lcms:arm64-windows-static libjpeg-turbo:arm64-windows-static zlib:arm64-windows-static
-            
-            New-Item -ItemType Directory -Force -Path $libsDir
-            Copy-Item "C:\vcpkg\installed\arm64-windows-static\lib\raw_r.lib" $libsDir
-            Copy-Item "C:\vcpkg\installed\arm64-windows-static\lib\lcms2.lib" $libsDir
-            Copy-Item "C:\vcpkg\installed\arm64-windows-static\lib\jpeg.lib" $libsDir
-            Copy-Item "C:\vcpkg\installed\arm64-windows-static\lib\zlib.lib" $libsDir
-            Write-Host "✅ ARM64 libraries compiled and copied"
-          } else {
-            Write-Host "✅ ARM64 libraries found in repo, skipping vcpkg"
-          }
-
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -275,57 +248,30 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: rust-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          key: rust-v2-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            rust-${{ runner.os }}-${{ matrix.target }}-
+            rust-v2-${{ runner.os }}-${{ matrix.target }}-
 
       - name: Cache Bun
-        if: matrix.platform != 'windows-11-arm'
         uses: actions/cache@v4
         with:
           path: |
             ~/.bun/install/cache
             node_modules
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
+          key: bun-v2-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
           restore-keys: |
-            bun-${{ runner.os }}-
-
-      - name: Cache npm
-        if: matrix.platform == 'windows-11-arm'
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            node_modules
-          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json', 'bun.lockb') }}
-          restore-keys: |
-            npm-${{ runner.os }}-
+            bun-v2-${{ runner.os }}-
 
       - name: Install dependencies (Bun)
-        if: matrix.platform != 'windows-11-arm'
         run: bun install --frozen-lockfile
 
-      - name: Install dependencies (npm - Windows ARM64)
-        if: matrix.platform == 'windows-11-arm'
-        run: npm install
-
       - name: Build Tauri app (Bun)
-        if: matrix.platform != 'windows-11-arm'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_SKIP_BUILD_FRONTEND: "true"
         run: bun run tauri build --target ${{ matrix.target }} ${{ matrix.args }}
-
-      - name: Build Tauri app (npm - Windows ARM64)
-        if: matrix.platform == 'windows-11-arm'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          TAURI_SKIP_BUILD_FRONTEND: "true"
-        run: npm run tauri build -- --target ${{ matrix.target }} ${{ matrix.args }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -381,11 +327,6 @@ jobs:
           copy_file "x86_64-pc-windows-msvc" "*x64-setup.exe.sig" "${APP}-${VERSION}-Windows-x64-Setup.exe.sig"
           copy_file "x86_64-pc-windows-msvc" "*x64_en-US.msi" "${APP}-${VERSION}-Windows-x64.msi"
 
-          # Windows ARM64 (NSIS)
-          copy_file "aarch64-pc-windows-msvc" "*arm64-setup.exe" "${APP}-${VERSION}-Windows-ARM64-Setup.exe"
-          copy_file "aarch64-pc-windows-msvc" "*arm64-setup.exe.sig" "${APP}-${VERSION}-Windows-ARM64-Setup.exe.sig"
-          copy_file "aarch64-pc-windows-msvc" "*arm64_en-US.msi" "${APP}-${VERSION}-Windows-ARM64.msi"
-
           # Linux x64
           copy_file "x86_64-unknown-linux-gnu" "*.AppImage" "${APP}-${VERSION}-Linux-x64.AppImage"
           copy_file "x86_64-unknown-linux-gnu" "*.deb" "${APP}-${VERSION}-Linux-x64.deb"
@@ -416,7 +357,6 @@ jobs:
           MACOS_INTEL_SIG=$(read_sig "${APP}-${VERSION}-macOS-Intel.app.tar.gz.sig")
           MACOS_ARM_SIG=$(read_sig "${APP}-${VERSION}-macOS-AppleSilicon.app.tar.gz.sig")
           WINDOWS_X64_SIG=$(read_sig "${APP}-${VERSION}-Windows-x64-Setup.exe.sig")
-          WINDOWS_ARM_SIG=$(read_sig "${APP}-${VERSION}-Windows-ARM64-Setup.exe.sig")
 
           cat > release-assets/latest.json << EOF
           {
@@ -435,10 +375,6 @@ jobs:
               "windows-x86_64": {
                 "signature": "${WINDOWS_X64_SIG}",
                 "url": "${BASE_URL}/${APP}-${VERSION}-Windows-x64-Setup.exe"
-              },
-              "windows-aarch64": {
-                "signature": "${WINDOWS_ARM_SIG}",
-                "url": "${BASE_URL}/${APP}-${VERSION}-Windows-ARM64-Setup.exe"
               }
             }
           }
@@ -462,14 +398,13 @@ jobs:
             | macOS | Intel | [.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-macOS-Intel.dmg) |
             | macOS | Apple Silicon | [.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-macOS-AppleSilicon.dmg) |
             | Windows | x64 | [Setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64-Setup.exe) / [.msi](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-x64.msi) |
-            | Windows | ARM64 | [Setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-ARM64-Setup.exe) / [.msi](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Windows-ARM64.msi) |
             | Linux | x64 | [.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.AppImage) / [.deb](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.deb) / [.rpm](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-x64.rpm) |
             | Linux | ARM64 | [.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-ARM64.AppImage) / [.deb](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-ARM64.deb) / [.rpm](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.APP_NAME }}-${{ steps.prepare.outputs.version }}-Linux-ARM64.rpm) |
 
             ### 🔄 Auto-Update
             If you already have the app installed, it will automatically check for updates and notify you when a new version is available!
 
-            **Supported platforms:** macOS (Intel & Apple Silicon), Windows (x64 & ARM64)
+            **Supported platforms:** macOS (Intel & Apple Silicon), Windows x64
 
             **Note:** Linux users need to manually download and install updates.
 
