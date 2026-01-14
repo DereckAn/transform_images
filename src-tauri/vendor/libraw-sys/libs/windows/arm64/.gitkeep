@@ -1,0 +1,3 @@
+# This directory will contain ARM64 Windows libraries
+# Libraries will be compiled during CI/CD or manually using:
+# vcpkg install libraw:arm64-windows-static lcms:arm64-windows-static libjpeg-turbo:arm64-windows-static zlib:arm64-windows-static

@@ -1,8 +1,16 @@
 <script lang="ts">
+  import { getVersion } from "@tauri-apps/api/app";
+  import { onMount } from "svelte";
   import pato from "../../assets/patoblack.png";
   
   export let pendingUpdate: any;
   export let onShowUpdateDialog: () => void;
+
+  let version = "";
+
+  onMount(async () => {
+    version = await getVersion();
+  });
 </script>
 
 <div class="flex items-center gap-3">
@@ -15,5 +23,8 @@
   <div class="flex flex-col">
     <h1 class="text-lg font-bold leading-normal text-white">Transform Images</h1>
     <p class="text-sm font-normal leading-normal text-slate-400">Image Optimizer</p>
+    {#if version}
+      <p class="text-xs font-normal leading-normal text-slate-500">v{version}</p>
+    {/if}
   </div>
 </div>
