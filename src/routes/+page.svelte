@@ -98,7 +98,14 @@
   async function checkForUpdates() {
     try {
       const update = await check();
-      if (update) pendingUpdate = update;
+      if (update) {
+        pendingUpdate = update;
+        console.log(`🎉 Update available: v${update.version}`);
+
+        // Optional: Automatically show dialog after 3 seconds
+        // Uncomment the line below if you want the dialog to auto-open
+        // setTimeout(() => showUpdateDialog = true, 3000);
+      }
     } catch (e) {
       console.error("Failed to check for updates:", e);
     }
@@ -304,25 +311,51 @@
 </div>
 
 <!-- Update Dialog -->
-{#if showUpdateDialog}
-  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+{#if showUpdateDialog && pendingUpdate}
+  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
     <div
-      class="bg-slate-800 rounded-xl p-6 max-w-2xl w-full mx-4 border-4 border-slate-700"
+      class="bg-slate-800 rounded-xl p-6 max-w-md w-full mx-4 border-2 border-blue-500/50 shadow-2xl"
     >
-      <h2 class="text-lg font-bold text-white mb-2">Update Available</h2>
-      <p class="text-sm text-slate-400 mb-4">
-        Version {pendingUpdate?.version} is available.
-      </p>
-      <div class="flex gap-3 justify-end">
+      <!-- Header with icon -->
+      <div class="flex items-center gap-3 mb-4">
+        <div class="size-12 rounded-full bg-blue-600 flex items-center justify-center">
+          <span class="text-2xl">🎉</span>
+        </div>
+        <div class="flex-1">
+          <h2 class="text-lg font-bold text-white">Update Available!</h2>
+          <p class="text-xs text-slate-400">
+            Current: v{version} → New: v{pendingUpdate.version}
+          </p>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="mb-6 space-y-2">
+        <p class="text-sm text-slate-300">
+          A new version of Quak Images is ready to install.
+        </p>
+        {#if pendingUpdate.body || pendingUpdate.notes}
+          <div class="max-h-32 overflow-y-auto bg-slate-900/50 rounded-lg p-3 text-xs text-slate-400">
+            {pendingUpdate.body || pendingUpdate.notes || "See release notes on GitHub"}
+          </div>
+        {/if}
+        <p class="text-xs text-slate-500 mt-2">
+          ✓ Download and installation are automatic<br />
+          ✓ The app will restart after updating
+        </p>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-3">
         <button
           on:click={() => (showUpdateDialog = false)}
-          class="px-4 py-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-colors text-sm font-medium"
+          class="flex-1 px-4 py-2.5 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-colors text-sm font-medium"
         >
-          Later
+          Remind Me Later
         </button>
         <button
           on:click={handleUpdate}
-          class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors text-sm font-medium"
+          class="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-500 hover:to-blue-400 transition-all text-sm font-medium shadow-lg shadow-blue-600/30"
         >
           Update Now
         </button>
