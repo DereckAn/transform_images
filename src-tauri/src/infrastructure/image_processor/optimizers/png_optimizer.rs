@@ -22,25 +22,31 @@ impl PngOptimizer {
     }
 
     /// Create oxipng options based on quality
+    ///
+    /// Maps the quality slider to oxipng optimization levels (0-6).
+    /// Higher levels = more processing time but better compression.
+    /// PNG is lossless, so "quality" here means compression effort, not visual quality.
     fn create_options(&self, quality: Quality) -> Options {
-        // Mapear quality (1-100) a nivel de optimización oxipng (0-6)
-        // Quality más alta = más tiempo de procesamiento pero mejor compresión
+        // Map quality slider (1-100) to oxipng optimization level (0-6)
+        // More aggressive mapping for better compression by default
         let optimization_level = match quality.value() {
-            1..=20 => 1,   // Muy rápido
-            21..=40 => 2,  // Rápido
-            41..=60 => 3,  // Normal
-            61..=80 => 4,  // Bueno
-            81..=95 => 5,  // Muy bueno
-            96..=100 => 6, // Máximo (más lento)
-            _ => 3,
+            1..=15 => 1,   // Fast (minimal optimization)
+            16..=35 => 2,  // Faster (basic optimization)
+            36..=55 => 3,  // Normal (good balance) - DEFAULT
+            56..=70 => 4,  // Good (better compression)
+            71..=85 => 5,  // Better (significant compression)
+            86..=100 => 6, // Best (maximum compression, slower)
+            _ => 3,        // Default fallback
         };
 
-        // CORRECCIÓN: Usar el método correcto para crear Options
-        // En oxipng 9.x, usamos from_preset con el nivel
+        // Create options from preset level
+        // oxipng presets configure filter strategies, compression, etc.
         let mut opts = Options::from_preset(optimization_level);
 
-        // Configurar opciones de optimización
-        opts.strip = oxipng::StripChunks::Safe; // Mantiene chunks importantes
+        // Strip all non-critical metadata chunks to reduce file size
+        // Removes: EXIF, XMP, color profiles, text chunks, timestamps
+        // Keeps: IHDR, IDAT, IEND, tRNS (transparency), PLTE (palette), etc.
+        opts.strip = oxipng::StripChunks::Safe;
 
         opts
     }

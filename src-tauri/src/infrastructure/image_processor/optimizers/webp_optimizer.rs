@@ -12,9 +12,13 @@ impl WebpOptimizer {
     }
 
     /// Encode the incoming image as WebP using lossy or lossless mode according to the requested quality.
+    ///
+    /// Creates a fresh WebP file from pixel data only - no metadata is copied.
+    /// This ensures the output is clean and optimized without EXIF/XMP.
     pub fn optimize(&self, image: &DynamicImage, quality: Quality) -> InfraResult<Vec<u8>> {
         // Convert to RGBA because the encoder expects packed RGB(A) buffers.
         let rgba = image.to_rgba8();
+        // Create WebP encoder from raw RGBA pixels (no metadata)
         let encoder = Encoder::from_rgba(rgba.as_raw(), rgba.width(), rgba.height());
 
         // Use near-lossless for very high quality targets, otherwise standard lossy encoding.

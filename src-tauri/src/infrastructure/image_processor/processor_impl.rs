@@ -13,7 +13,6 @@ use crate::infrastructure::image_processor::optimizers::{
 };
 use crate::infrastructure::image_processor::transformers::{Resizer, Rotator};
 use crate::infrastructure::image_processor::RawProcessor;
-use crate::infrastructure::metadata_cleaner::MetadataCleaner;
 
 /// Main image processor implementation
 pub struct ImageProcessorImpl {
@@ -23,7 +22,6 @@ pub struct ImageProcessorImpl {
     resizer: Resizer,
     rotator: Rotator,
     raw_processor: RawProcessor,
-    metadata_cleaner: MetadataCleaner,
 }
 
 impl ImageProcessorImpl {
@@ -35,7 +33,6 @@ impl ImageProcessorImpl {
             resizer: Resizer::new(),
             rotator: Rotator::new(),
             raw_processor: RawProcessor::new(),
-            metadata_cleaner: MetadataCleaner::new(),
         }
     }
 
@@ -78,7 +75,7 @@ impl ImageProcessorImpl {
         format: ImageFormat,
         settings: &ProcessingSettings,
     ) -> InfraResult<Vec<u8>> {
-        let mut output = match format {
+        let output = match format {
             ImageFormat::Png => {
                 let mut bytes = Vec::new();
                 let mut cursor = Cursor::new(&mut bytes);
@@ -91,12 +88,16 @@ impl ImageProcessorImpl {
                             e
                         ))
                     })?;
+                // oxipng optimization with built-in metadata stripping
                 self.png_optimizer.optimize(&bytes, settings.quality())?
             }
-            ImageFormat::Jpeg | ImageFormat::Raw => self
-                .jpeg_optimizer
-                .optimize_from_dynamic_image(img, settings.quality())?,
+            ImageFormat::Jpeg | ImageFormat::Raw => {
+                // mozjpeg creates fresh JPEG from RGB data (no EXIF copied)
+                self.jpeg_optimizer
+                    .optimize_from_dynamic_image(img, settings.quality())?
+            }
             ImageFormat::Webp => {
+                // WebP encoder creates fresh file from pixel data (no EXIF)
                 self.webp_optimizer.optimize(img, settings.quality())?
             }
             ImageFormat::Gif => {
@@ -116,8 +117,12 @@ impl ImageProcessorImpl {
             }
         };
 
-        // ⚠️ NUEVO: Limpiar metadatos SIEMPRE
-        output = self.metadata_cleaner.strip_metadata(&output, format)?;
+        // NOTE: Metadata stripping is now handled by the optimizers themselves.
+        // - PNG: oxipng strips metadata via StripChunks::Safe during optimization
+        // - JPEG: mozjpeg creates fresh JPEG from RGB pixels (no EXIF copied from DynamicImage)
+        // - WebP: encoder creates fresh file from pixel data (no EXIF in DynamicImage)
+        // - RAW: LibRaw outputs RGB pixels only, then encoded as JPEG (no metadata)
+        // The metadata_cleaner is no longer needed as it was re-encoding and destroying optimizations.
 
         Ok(output)
     }
