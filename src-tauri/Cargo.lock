@@ -9,6 +9,7 @@ dependencies = [
  "anyhow",
  "image 0.25.9",
  "img-parts",
+ "indexmap 2.13.0",
  "libraw-sys",
  "mockall",
  "mozjpeg",
