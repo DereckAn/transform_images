@@ -230,7 +230,26 @@ jobs:
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
-        run: brew install libraw little-cms2 jpeg-turbo
+        run: |
+          echo "🍺 Installing Homebrew dependencies..."
+          brew install libraw little-cms2 jpeg-turbo
+
+          # Verificar las bibliotecas instaladas
+          echo "📦 Verifying installed libraries..."
+          HOMEBREW_PREFIX=$(brew --prefix)
+          echo "Homebrew prefix: $HOMEBREW_PREFIX"
+
+          # Listar bibliotecas instaladas
+          ls -la "$HOMEBREW_PREFIX/lib/libraw"* || true
+          ls -la "$HOMEBREW_PREFIX/lib/liblcms2"* || true
+          ls -la "$HOMEBREW_PREFIX/lib/libjpeg"* || true
+
+          # Verificar rutas opt
+          ls -la "$HOMEBREW_PREFIX/opt/libraw/lib/" || true
+          ls -la "$HOMEBREW_PREFIX/opt/little-cms2/lib/" || true
+          ls -la "$HOMEBREW_PREFIX/opt/jpeg-turbo/lib/" || true
+
+          echo "✅ Dependencies installed"
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
