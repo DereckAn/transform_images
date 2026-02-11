@@ -232,7 +232,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           echo "🍺 Installing Homebrew dependencies..."
-          brew install libraw little-cms2 jpeg-turbo
+          brew install libraw little-cms2 jpeg-turbo libomp
 
           # Verificar las bibliotecas instaladas
           echo "📦 Verifying installed libraries..."
@@ -243,11 +243,13 @@ jobs:
           ls -la "$HOMEBREW_PREFIX/lib/libraw"* || true
           ls -la "$HOMEBREW_PREFIX/lib/liblcms2"* || true
           ls -la "$HOMEBREW_PREFIX/lib/libjpeg"* || true
+          ls -la "$HOMEBREW_PREFIX/lib/libomp"* || true
 
           # Verificar rutas opt
           ls -la "$HOMEBREW_PREFIX/opt/libraw/lib/" || true
           ls -la "$HOMEBREW_PREFIX/opt/little-cms2/lib/" || true
           ls -la "$HOMEBREW_PREFIX/opt/jpeg-turbo/lib/" || true
+          ls -la "$HOMEBREW_PREFIX/opt/libomp/lib/" || true
 
           echo "✅ Dependencies installed"
 

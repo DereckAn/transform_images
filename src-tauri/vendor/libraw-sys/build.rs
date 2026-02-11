@@ -31,6 +31,9 @@ fn configure_macos(is_static: bool, target_arch: &str, target: &str) {
     // macOS usa libc++ (LLVM), NO libstdc++ (GNU)
     println!("cargo:rustc-link-lib=dylib=c++");
 
+    // LibRaw se compila con soporte OpenMP, necesitamos enlazar libomp
+    println!("cargo:rustc-link-lib=dylib=omp");
+
     // Determinar Homebrew prefix basado en la arquitectura TARGET (no host)
     // IMPORTANTE: Esto maneja correctamente cross-compilation
     let homebrew_prefix = if target.contains("aarch64") || target_arch == "aarch64" {
