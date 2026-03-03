@@ -14,6 +14,7 @@ export interface OptimizationOptions {
   outputDirectory: string;
   preserveMetadata: boolean;
   overwriteExisting: boolean;
+  rawQualityMode?: string;
 }
 
 export interface TransformationOptions {

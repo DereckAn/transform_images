@@ -67,6 +67,10 @@ impl BatchProcessor {
         cancel_signal: Arc<AtomicBool>,
         progress_callback: Option<ProgressCallback>,
     ) -> Vec<ProcessingResult> {
+        // Prevent OpenMP thread oversubscription: Rayon handles image-level parallelism,
+        // LibRaw's OpenMP should use 1 thread per image instance.
+        std::env::set_var("OMP_NUM_THREADS", "1");
+
         let total = images.len();
         let counter = Arc::new(AtomicUsize::new(0));
 

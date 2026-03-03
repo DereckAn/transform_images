@@ -5,6 +5,6 @@ pub mod value_objects;
 
 // Re-export commonly used types
 pub use error::{DomainError, DomainResult};
-pub use models::{Image, ProcessingSettings, Transformation};
+pub use models::{Image, ProcessingSettings, RawQualityMode, Transformation};
 pub use services::ImageProcessor;
 pub use value_objects::{Dimensions, ImageFormat, Quality};

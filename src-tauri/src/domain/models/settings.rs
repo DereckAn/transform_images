@@ -2,6 +2,16 @@ use crate::domain::value_objects::{ImageFormat, Quality};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+/// Quality mode for RAW image decoding
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum RawQualityMode {
+    Fast,       // half_size=1, bilinear — ~15x faster, half-resolution output
+    #[default]
+    Balanced,   // full-res, PPG demosaicing — ~3x faster, full resolution
+    Quality,    // full-res, AHD demosaicing — current behavior (slowest)
+}
+
 /// Processing settings for image optimization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessingSettings {
@@ -17,6 +27,8 @@ pub struct ProcessingSettings {
     overwrite_existing: bool,
     /// Number of parallel workers (None = auto)
     max_workers: Option<usize>,
+    /// Quality mode for RAW image decoding
+    raw_quality_mode: RawQualityMode,
 }
 
 impl ProcessingSettings {
@@ -29,6 +41,7 @@ impl ProcessingSettings {
             preserve_metadata: false,
             overwrite_existing: false,
             max_workers: None,
+            raw_quality_mode: RawQualityMode::Balanced,
         }
     }
 
@@ -67,6 +80,12 @@ impl ProcessingSettings {
         self
     }
 
+    /// Set RAW quality mode
+    pub fn set_raw_quality_mode(&mut self, mode: RawQualityMode) -> &mut Self {
+        self.raw_quality_mode = mode;
+        self
+    }
+
     /// Get quality
     pub fn quality(&self) -> Quality {
         self.quality
@@ -97,6 +116,11 @@ impl ProcessingSettings {
         self.max_workers
     }
 
+    /// Get RAW quality mode
+    pub fn raw_quality_mode(&self) -> RawQualityMode {
+        self.raw_quality_mode
+    }
+
     /// Determine the output format for a given input format
     pub fn determine_output_format(&self, input_format: ImageFormat) -> ImageFormat {
         self.output_format.unwrap_or(input_format)
@@ -112,6 +136,7 @@ impl Default for ProcessingSettings {
             preserve_metadata: false,
             overwrite_existing: false,
             max_workers: None,
+            raw_quality_mode: RawQualityMode::Balanced,
         }
     }
 }

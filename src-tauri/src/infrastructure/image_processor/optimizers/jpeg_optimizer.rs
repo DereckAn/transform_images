@@ -56,8 +56,14 @@ impl JpegOptimizer {
             .start_compress(Vec::new())
             .map_err(|e| InfraError::JpegOptimizationFailed(e.to_string()))?;
 
-        // Escribir scanlines
-        assert_eq!(rgb_data.len(), width * height * 3, "Invalid RGB data size");
+        // Validate data size before writing (avoid panic=abort crash)
+        if rgb_data.len() != width * height * 3 {
+            return Err(InfraError::JpegOptimizationFailed(format!(
+                "Invalid RGB data size: expected {}, got {}",
+                width * height * 3,
+                rgb_data.len()
+            )));
+        }
 
         // Escribir datos por scanlines
         compressor

@@ -2,6 +2,7 @@ use image::{DynamicImage, RgbImage};
 use std::ffi::CString;
 use std::path::Path;
 
+use crate::domain::RawQualityMode;
 use crate::infrastructure::error::{InfraError, InfraResult};
 
 /// Helper: Convert LibRaw error code to human-readable message
@@ -30,7 +31,7 @@ impl RawProcessor {
     }
 
     /// Convert RAW file to DynamicImage using LibRaw FFI
-    pub fn process_raw(&self, path: &Path) -> InfraResult<DynamicImage> {
+    pub fn process_raw(&self, path: &Path, quality_mode: RawQualityMode) -> InfraResult<DynamicImage> {
         // Verificar que el archivo existe
         if !path.exists() {
             return Err(InfraError::ImageReadError(format!(
@@ -57,6 +58,30 @@ impl RawProcessor {
 
             // Guard garantiza limpieza automática si hay error
             let _guard = LibRawGuard(data);
+
+            // Configure params for performance (always-on free speedups)
+            libraw_sys::libraw_set_no_auto_bright(data, 1); // skip histogram scan
+            libraw_sys::libraw_set_highlight(data, 0);      // clip mode (fastest)
+            libraw_sys::libraw_set_fbdd_noiserd(data, 0);   // no FBDD noise reduction
+            libraw_sys::libraw_set_output_color(data, 1);   // sRGB
+            libraw_sys::libraw_set_output_bps(data, 8);     // 8-bit output
+            (*data).params.use_camera_wb = 1;               // read WB from metadata (free)
+
+            // Mode-specific settings
+            match quality_mode {
+                RawQualityMode::Fast => {
+                    (*data).params.half_size = 1;               // 2x2→1px: 4x fewer pixels
+                    libraw_sys::libraw_set_demosaic(data, 0);   // bilinear: fastest
+                }
+                RawQualityMode::Balanced => {
+                    (*data).params.half_size = 0;
+                    libraw_sys::libraw_set_demosaic(data, 2);   // PPG: ~3x faster than AHD
+                }
+                RawQualityMode::Quality => {
+                    (*data).params.half_size = 0;
+                    libraw_sys::libraw_set_demosaic(data, 3);   // AHD: highest quality
+                }
+            }
 
             // Paso 2: Abrir archivo RAW
             let ret = libraw_sys::libraw_open_file(data, c_path.as_ptr());

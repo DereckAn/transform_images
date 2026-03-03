@@ -80,6 +80,10 @@ export class AppState {
     this.options.outputFormat = format;
   }
 
+  setRawQualityMode(mode: string | undefined) {
+    this.options.rawQualityMode = mode;
+  }
+
   // Transformation methods
   setResize(
     width: number | null,

@@ -3,6 +3,7 @@
   import MetadataOptions from "./sidebar/MetadataOptions.svelte";
   import OutputDirectoryPicker from "./sidebar/OutputDirectoryPicker.svelte";
   import QualitySlider from "./sidebar/QualitySlider.svelte";
+  import RawQualitySelector from "./sidebar/RawQualitySelector.svelte";
   import TransformationsPanel from "./sidebar/TransformationsPanel.svelte";
 
   export let quality: number;
@@ -19,6 +20,8 @@
   export let flipHorizontal: boolean;
   export let flipVertical: boolean;
 
+  export let rawQualityMode: string | undefined;
+
   export let onSelectOutputDir: () => void;
   export let onResetTransformations: () => void;
 </script>
@@ -31,6 +34,7 @@
 
     <QualitySlider bind:quality />
     <FormatSelector bind:outputFormat />
+    <RawQualitySelector bind:rawQualityMode />
     <OutputDirectoryPicker {outputDirectory} {onSelectOutputDir} />
     <MetadataOptions bind:preserveMetadata bind:overwriteExisting />
 

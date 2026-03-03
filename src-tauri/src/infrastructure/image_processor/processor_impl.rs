@@ -5,7 +5,7 @@ use std::path::Path;
 
 use crate::domain::{
     Dimensions, DomainError, DomainResult, Image, ImageFormat, ImageProcessor, ProcessingSettings,
-    Transformation,
+    RawQualityMode, Transformation,
 };
 use crate::infrastructure::error::{InfraError, InfraResult};
 use crate::infrastructure::image_processor::optimizers::{
@@ -37,13 +37,13 @@ impl ImageProcessorImpl {
     }
 
     /// Load DynamicImage from file
-    fn load_dynamic_image(&self, path: &Path) -> InfraResult<DynamicImage> {
+    fn load_dynamic_image(&self, path: &Path, raw_quality_mode: RawQualityMode) -> InfraResult<DynamicImage> {
         // Check if it's a RAW file
         if let Some(ext) = path.extension() {
             let ext_str = ext.to_string_lossy().to_string();
             if RawProcessor::is_raw_format(&ext_str) {
                 // Use RAW processor
-                return self.raw_processor.process_raw(path);
+                return self.raw_processor.process_raw(path, raw_quality_mode);
             }
         }
 
@@ -215,7 +215,7 @@ impl ImageProcessor for ImageProcessorImpl {
     fn optimize(&self, image: &Image, settings: &ProcessingSettings) -> DomainResult<Vec<u8>> {
         // Cargar imagen
         let dynamic_img = self
-            .load_dynamic_image(image.path())
+            .load_dynamic_image(image.path(), settings.raw_quality_mode())
             .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
 
         // Determinar formato de salida
@@ -229,7 +229,7 @@ impl ImageProcessor for ImageProcessorImpl {
     fn transform(&self, image: &Image, transformation: &Transformation) -> DomainResult<Vec<u8>> {
         // Cargar imagen
         let dynamic_img = self
-            .load_dynamic_image(image.path())
+            .load_dynamic_image(image.path(), RawQualityMode::Balanced)
             .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
 
         // Aplicar transformaciones
@@ -255,7 +255,7 @@ impl ImageProcessor for ImageProcessorImpl {
     ) -> DomainResult<Vec<u8>> {
         // Cargar imagen
         let mut dynamic_img = self
-            .load_dynamic_image(image.path())
+            .load_dynamic_image(image.path(), settings.raw_quality_mode())
             .map_err(|e| DomainError::UnsupportedTransformation(e.to_string()))?;
 
         // Aplicar transformaciones si existen

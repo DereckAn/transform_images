@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 use crate::domain::models::{ResizeFilter, ResizeTransformation, Rotation};
-use crate::domain::{Dimensions, Image, ImageFormat, ProcessingSettings, Quality, Transformation};
+use crate::domain::{Dimensions, Image, ImageFormat, ProcessingSettings, Quality, RawQualityMode, Transformation};
 use crate::infrastructure::image_processor::ProcessingResult;
 
 /// Data Transfer Objects for frontend-backend communication
@@ -37,6 +37,7 @@ pub struct OptimizationOptionsDto {
     pub output_directory: String,
     pub preserve_metadata: bool,
     pub overwrite_existing: bool,
+    pub raw_quality_mode: Option<String>,
 }
 
 impl OptimizationOptionsDto {
@@ -52,10 +53,17 @@ impl OptimizationOptionsDto {
 
         let mut settings = ProcessingSettings::new(quality, PathBuf::from(&self.output_directory));
 
+        let raw_mode = match self.raw_quality_mode.as_deref() {
+            Some("fast") => RawQualityMode::Fast,
+            Some("quality") => RawQualityMode::Quality,
+            _ => RawQualityMode::Balanced,
+        };
+
         settings
             .set_output_format(output_format)
             .set_preserve_metadata(self.preserve_metadata)
-            .set_overwrite_existing(self.overwrite_existing);
+            .set_overwrite_existing(self.overwrite_existing)
+            .set_raw_quality_mode(raw_mode);
 
         Ok(settings)
     }

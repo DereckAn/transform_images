@@ -24,6 +24,7 @@
   let preserveMetadata = false;
   let overwriteExisting = false;
   let threadCount = 0;
+  let rawQualityMode: string | undefined = "balanced";
   let showTransformations = false;
   let progress = { current: 0, total: 0, percentage: 0, currentFile: "" };
   let results: ProcessedImage[] = [];
@@ -212,6 +213,7 @@
 
     appState.setQuality(quality);
     appState.setOutputFormat(outputFormat);
+    appState.setRawQualityMode(rawQualityMode);
     appState.setPreserveMetadata(preserveMetadata);
     appState.setOverwriteExisting(overwriteExisting);
     appState.setResize(
@@ -280,6 +282,7 @@
       bind:outputDirectory
       bind:preserveMetadata
       bind:overwriteExisting
+      bind:rawQualityMode
       bind:showTransformations
       bind:resizeWidth
       bind:resizeHeight
