@@ -31,9 +31,6 @@ fn configure_macos(is_static: bool, target_arch: &str, target: &str) {
     // macOS usa libc++ (LLVM), NO libstdc++ (GNU)
     println!("cargo:rustc-link-lib=dylib=c++");
 
-    // LibRaw se compila con soporte OpenMP, necesitamos enlazar libomp
-    println!("cargo:rustc-link-lib=dylib=omp");
-
     // Determinar Homebrew prefix basado en la arquitectura TARGET (no host)
     // IMPORTANTE: Esto maneja correctamente cross-compilation
     let homebrew_prefix = if target.contains("aarch64") || target_arch == "aarch64" {
@@ -43,6 +40,18 @@ fn configure_macos(is_static: bool, target_arch: &str, target: &str) {
     };
 
     println!("cargo:warning=📦 Homebrew prefix: {}", homebrew_prefix);
+
+    // LibRaw se compila con soporte OpenMP, necesitamos enlazar libomp
+    // Agregar ruta de búsqueda para libomp ANTES de intentar enlazarlo
+    let libomp_path = format!("{}/opt/libomp/lib", homebrew_prefix);
+    if Path::new(&libomp_path).exists() {
+        println!("cargo:rustc-link-search=native={}", libomp_path);
+        println!("cargo:rustc-link-lib=dylib=omp");
+        println!("cargo:warning=✓ libomp found at {}", libomp_path);
+    } else {
+        println!("cargo:warning=⚠️ libomp not found - OpenMP support disabled");
+        println!("cargo:warning=   Install with: brew install libomp");
+    }
 
     // Intentar detectar rutas alternativas de Homebrew
     let alternate_paths = get_homebrew_lib_paths(homebrew_prefix, target_arch);
@@ -105,6 +114,7 @@ fn get_homebrew_lib_paths(prefix: &str, _arch: &str) -> Vec<String> {
         "little-cms2",
         "jpeg-turbo",
         "jpeg",
+        "libomp",  // OpenMP support
     ];
 
     for package in common_packages {
