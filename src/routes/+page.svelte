@@ -44,6 +44,7 @@
   // Reactive computed
   $: canProcess = images.length > 0 && outputDirectory && !isProcessing;
   $: hasImages = images.length > 0;
+  $: hasRawImages = images.some((img) => img.format === "raw");
   $: successful = results.filter((r) => r.success).length;
   $: failed = results.length - successful;
   $: totalSaved = results
@@ -213,7 +214,7 @@
 
     appState.setQuality(quality);
     appState.setOutputFormat(outputFormat);
-    appState.setRawQualityMode(rawQualityMode);
+    appState.setRawQualityMode(hasRawImages ? rawQualityMode : undefined);
     appState.setPreserveMetadata(preserveMetadata);
     appState.setOverwriteExisting(overwriteExisting);
     appState.setResize(
@@ -283,6 +284,7 @@
       bind:preserveMetadata
       bind:overwriteExisting
       bind:rawQualityMode
+      {hasRawImages}
       bind:showTransformations
       bind:resizeWidth
       bind:resizeHeight
@@ -358,7 +360,7 @@
         </button>
         <button
           on:click={handleUpdate}
-          class="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-500 hover:to-blue-400 transition-all text-sm font-medium shadow-lg shadow-blue-600/30"
+          class="flex-1 px-4 py-2.5 rounded-lg bg-linear-to-r from-blue-600 to-blue-500 text-white hover:from-blue-500 hover:to-blue-400 transition-all text-sm font-medium shadow-lg shadow-blue-600/30"
         >
           Update Now
         </button>

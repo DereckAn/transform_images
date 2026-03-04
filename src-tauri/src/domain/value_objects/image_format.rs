@@ -84,7 +84,14 @@ impl FromStr for ImageFormat {
 
 impl fmt::Display for ImageFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.extension())
+        let name = match self {
+            ImageFormat::Png => "png",
+            ImageFormat::Jpeg => "jpg",
+            ImageFormat::Webp => "webp",
+            ImageFormat::Gif => "gif",
+            ImageFormat::Raw => "raw", // identifier, not output extension
+        };
+        write!(f, "{}", name)
     }
 }
 
@@ -128,5 +135,24 @@ mod tests {
     fn test_lossy_support() {
         assert!(ImageFormat::Jpeg.supports_lossy());
         assert!(!ImageFormat::Png.supports_lossy());
+    }
+
+    #[test]
+    fn test_raw_format_identifier_is_raw_not_jpg() {
+        // ImageDto uses format.to_string() to send the format name to the frontend.
+        // RAW files must serialize as "raw" so the frontend can distinguish them
+        // from real JPEGs and show the RAW quality selector.
+        // Regression: previously Raw.to_string() returned "jpg" (the output extension)
+        // which made ARW files look identical to JPEG on the frontend.
+        assert_eq!(
+            ImageFormat::Raw.to_string(),
+            "raw",
+            "Raw format must serialize as 'raw', not as its output extension 'jpg'"
+        );
+
+        // Sanity check: other formats still serialize as their extensions
+        assert_eq!(ImageFormat::Jpeg.to_string(), "jpg");
+        assert_eq!(ImageFormat::Png.to_string(), "png");
+        assert_eq!(ImageFormat::Webp.to_string(), "webp");
     }
 }

@@ -21,6 +21,7 @@
   export let flipVertical: boolean;
 
   export let rawQualityMode: string | undefined;
+  export let hasRawImages: boolean;
 
   export let onSelectOutputDir: () => void;
   export let onResetTransformations: () => void;
@@ -34,7 +35,9 @@
 
     <QualitySlider bind:quality />
     <FormatSelector bind:outputFormat />
-    <RawQualitySelector bind:rawQualityMode />
+    {#if hasRawImages}
+      <RawQualitySelector bind:rawQualityMode />
+    {/if}
     <OutputDirectoryPicker {outputDirectory} {onSelectOutputDir} />
     <MetadataOptions bind:preserveMetadata bind:overwriteExisting />
 
