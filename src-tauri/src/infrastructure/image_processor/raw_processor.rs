@@ -1,5 +1,6 @@
 use image::{DynamicImage, RgbImage};
 use std::ffi::CString;
+use std::io::Cursor;
 use std::path::Path;
 
 use crate::domain::RawQualityMode;
@@ -32,7 +33,6 @@ impl RawProcessor {
 
     /// Convert RAW file to DynamicImage using LibRaw FFI
     pub fn process_raw(&self, path: &Path, quality_mode: RawQualityMode) -> InfraResult<DynamicImage> {
-        // Verificar que el archivo existe
         if !path.exists() {
             return Err(InfraError::ImageReadError(format!(
                 "RAW file not found: {}",
@@ -40,15 +40,17 @@ impl RawProcessor {
             )));
         }
 
-        // Convertir path a CString (para FFI C)
         let path_str = path
             .to_str()
             .ok_or_else(|| InfraError::ImageReadError("Invalid file path".to_string()))?;
         let c_path = CString::new(path_str)
             .map_err(|e| InfraError::ImageReadError(format!("Invalid path: {}", e)))?;
 
+        if quality_mode == RawQualityMode::Thumbnail {
+            return self.extract_thumbnail(path, &c_path);
+        }
+
         unsafe {
-            // Paso 1: Crear procesador LibRaw
             let data = libraw_sys::libraw_init(0);
             if data.is_null() {
                 return Err(InfraError::DecodeError(
@@ -56,83 +58,125 @@ impl RawProcessor {
                 ));
             }
 
-            // Guard garantiza limpieza automática si hay error
             let _guard = LibRawGuard(data);
 
-            // Configure params for performance (always-on free speedups)
-            libraw_sys::libraw_set_no_auto_bright(data, 1); // skip histogram scan
-            libraw_sys::libraw_set_highlight(data, 0);      // clip mode (fastest)
-            libraw_sys::libraw_set_fbdd_noiserd(data, 0);   // no FBDD noise reduction
-            libraw_sys::libraw_set_output_color(data, 1);   // sRGB
-            libraw_sys::libraw_set_output_bps(data, 8);     // 8-bit output
-            (*data).params.use_camera_wb = 1;               // read WB from metadata (free)
+            // Always-on performance params
+            libraw_sys::libraw_set_no_auto_bright(data, 1);
+            libraw_sys::libraw_set_highlight(data, 0);
+            libraw_sys::libraw_set_fbdd_noiserd(data, 0);
+            libraw_sys::libraw_set_output_color(data, 1);
+            libraw_sys::libraw_set_output_bps(data, 8);
+            (*data).params.use_camera_wb = 1;
 
-            // Mode-specific settings
             match quality_mode {
+                RawQualityMode::Thumbnail => unreachable!(),
                 RawQualityMode::Fast => {
-                    (*data).params.half_size = 1;               // 2x2→1px: 4x fewer pixels
-                    libraw_sys::libraw_set_demosaic(data, 0);   // bilinear: fastest
+                    (*data).params.half_size = 1;
+                    libraw_sys::libraw_set_demosaic(data, 0);
                 }
                 RawQualityMode::Balanced => {
                     (*data).params.half_size = 0;
-                    libraw_sys::libraw_set_demosaic(data, 2);   // PPG: ~3x faster than AHD
+                    libraw_sys::libraw_set_demosaic(data, 2);
                 }
                 RawQualityMode::Quality => {
                     (*data).params.half_size = 0;
-                    libraw_sys::libraw_set_demosaic(data, 3);   // AHD: highest quality
+                    libraw_sys::libraw_set_demosaic(data, 3);
                 }
             }
 
-            // Paso 2: Abrir archivo RAW
             let ret = libraw_sys::libraw_open_file(data, c_path.as_ptr());
             if ret != 0 {
                 return Err(InfraError::ImageReadError(format!(
                     "Failed to open RAW file '{}': {} (error {})",
-                    path.display(),
-                    libraw_error_message(ret),
-                    ret
+                    path.display(), libraw_error_message(ret), ret
                 )));
             }
 
-            // Paso 3: Desempaquetar datos RAW del sensor
             let ret = libraw_sys::libraw_unpack(data);
             if ret != 0 {
                 return Err(InfraError::DecodeError(format!(
                     "Failed to unpack RAW data from '{}': {} (error {})",
-                    path.display(),
-                    libraw_error_message(ret),
-                    ret
+                    path.display(), libraw_error_message(ret), ret
                 )));
             }
 
-            // Paso 4: Procesar RAW → RGB (demosaicing, balance blanco, corrección color)
             let ret = libraw_sys::libraw_dcraw_process(data);
             if ret != 0 {
                 return Err(InfraError::DecodeError(format!(
                     "Failed to process RAW data from '{}': {} (error {})",
-                    path.display(),
-                    libraw_error_message(ret),
-                    ret
+                    path.display(), libraw_error_message(ret), ret
                 )));
             }
 
-            // Paso 5: Obtener imagen procesada en memoria
             let mut err_code: i32 = 0;
             let processed = libraw_sys::libraw_dcraw_make_mem_image(data, &mut err_code);
             if processed.is_null() {
                 return Err(InfraError::DecodeError(format!(
                     "Failed to create image from RAW file '{}': {} (error {})",
-                    path.display(),
-                    libraw_error_message(err_code),
-                    err_code
+                    path.display(), libraw_error_message(err_code), err_code
                 )));
             }
 
-            // Guard garantiza limpieza de imagen procesada
             let _processed_guard = ProcessedImageGuard(processed);
-
-            // Paso 6: Convertir de LibRaw a DynamicImage
             self.convert_libraw_to_dynamic_image(processed)
+        }
+    }
+
+    /// Extract embedded JPEG thumbnail from RAW file — no demosaicing, ~100x faster.
+    /// Falls back to Balanced demosaicing if no usable thumbnail is found.
+    fn extract_thumbnail(&self, path: &Path, c_path: &CString) -> InfraResult<DynamicImage> {
+        unsafe {
+            let data = libraw_sys::libraw_init(0);
+            if data.is_null() {
+                return Err(InfraError::DecodeError(
+                    "Failed to initialize LibRaw".to_string(),
+                ));
+            }
+
+            let _guard = LibRawGuard(data);
+
+            let ret = libraw_sys::libraw_open_file(data, c_path.as_ptr());
+            if ret != 0 {
+                return Err(InfraError::ImageReadError(format!(
+                    "Failed to open RAW file '{}': {} (error {})",
+                    path.display(), libraw_error_message(ret), ret
+                )));
+            }
+
+            // Unpack only the thumbnail — skips all sensor data decoding
+            let ret = libraw_sys::libraw_unpack_thumb(data);
+            if ret != 0 {
+                // No thumbnail in this file — fall back to Balanced demosaicing
+                drop(_guard);
+                return self.process_raw(path, RawQualityMode::Balanced);
+            }
+
+            let mut err_code: i32 = 0;
+            let thumb = libraw_sys::libraw_dcraw_make_mem_thumb(data, &mut err_code);
+            if thumb.is_null() {
+                drop(_guard);
+                return self.process_raw(path, RawQualityMode::Balanced);
+            }
+
+            let _thumb_guard = ProcessedImageGuard(thumb);
+            let img = &*thumb;
+
+            match img.image_type {
+                libraw_sys::LibRaw_image_formats::LIBRAW_IMAGE_JPEG => {
+                    // Thumbnail is a raw JPEG blob — decode it directly with the image crate
+                    let data_size = img.data_size as usize;
+                    let jpeg_bytes = std::slice::from_raw_parts(img.data.as_ptr(), data_size);
+                    image::load_from_memory_with_format(jpeg_bytes, image::ImageFormat::Jpeg)
+                        .map_err(|e| InfraError::DecodeError(format!(
+                            "Failed to decode embedded JPEG thumbnail from '{}': {}",
+                            path.display(), e
+                        )))
+                }
+                libraw_sys::LibRaw_image_formats::LIBRAW_IMAGE_BITMAP => {
+                    // Thumbnail is already a decoded RGB bitmap
+                    self.convert_libraw_to_dynamic_image(thumb)
+                }
+            }
         }
     }
 

@@ -6,6 +6,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum RawQualityMode {
+    Thumbnail,  // embedded JPEG from camera — ~100x faster, no demosaicing
     Fast,       // half_size=1, bilinear — ~15x faster, half-resolution output
     #[default]
     Balanced,   // full-res, PPG demosaicing — ~3x faster, full resolution

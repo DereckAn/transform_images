@@ -54,6 +54,7 @@ impl OptimizationOptionsDto {
         let mut settings = ProcessingSettings::new(quality, PathBuf::from(&self.output_directory));
 
         let raw_mode = match self.raw_quality_mode.as_deref() {
+            Some("thumbnail") => RawQualityMode::Thumbnail,
             Some("fast") => RawQualityMode::Fast,
             Some("quality") => RawQualityMode::Quality,
             _ => RawQualityMode::Balanced,
