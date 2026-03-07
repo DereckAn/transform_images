@@ -270,6 +270,7 @@
     {isProcessing}
     {canProcess}
     {threadCount}
+    {progress}
     onShowUpdateDialog={() => pendingUpdate && (showUpdateDialog = true)}
     onProcess={handleProcess}
     onCancel={handleCancel}

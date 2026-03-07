@@ -5,8 +5,9 @@
   export let pendingUpdate: any;
   export let onShowUpdateDialog: () => void;
   export let isProcessing: boolean;
-  export let canProcess: boolean;
+  export let canProcess: boolean | string;
   export let threadCount: number;
+  export let progress: { current: number; total: number; percentage: number; currentFile: string };
   export let onProcess: () => void;
   export let onCancel: () => void;
   export let onClearAll: () => void;
@@ -14,11 +15,12 @@
 
 <header class="flex items-center justify-between px-6 py-2 bg-background">
   <Logo {pendingUpdate} {onShowUpdateDialog} />
-  
-  <ActionButtons 
+
+  <ActionButtons
     {isProcessing}
     {canProcess}
     {threadCount}
+    {progress}
     {onProcess}
     {onCancel}
     {onClearAll}
