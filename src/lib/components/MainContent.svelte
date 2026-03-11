@@ -31,21 +31,25 @@
     {#if !hasImages}
       <DropZone {onBrowseFiles} {onBrowseFolder} />
     {:else}
-      <div class="h-full flex flex-col gap-4">
-        <ImageGrid {images} {onRemoveImage} />
+      <div class="h-full flex flex-col gap-4 min-h-0 relative ">
+        <div class="flex-1 min-h-0">
+          <ImageGrid {images} {onRemoveImage} />
+        </div>
 
         {#if isProcessing}
           <ProgressBar {progress} />
         {/if}
 
         {#if showResults}
-          <ResultsPanel
-            {results}
-            {successful}
-            {failed}
-            {totalSaved}
-            {avgCompression}
-          />
+          <div class="shrink-0 min-h-0 w-full flex flex-col absolute bottom-4 ">
+            <ResultsPanel
+              {results}
+              {successful}
+              {failed}
+              {totalSaved}
+              {avgCompression}
+            />
+          </div>
         {/if}
       </div>
     {/if}

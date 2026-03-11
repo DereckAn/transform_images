@@ -22,9 +22,16 @@
     : 'bg-red-500/10 border-red-500/30'}"
 >
   <div class="flex items-center justify-between">
-    <p class="text-sm font-medium text-white truncate flex-1">
+    <p class="text-sm font-medium text-white truncate ">
       {getFileName(result.originalPath)}
     </p>
+    {#if result.success}
+      <p class="text-xs text-slate-400 mt-1">
+        {formatBytes(result.originalSize)} → {formatBytes(result.outputSize)}
+      </p>
+    {:else}
+      <p class="text-xs text-red-400 mt-1">{result.errorMessage}</p>
+    {/if}
     {#if result.success}
       <span class="text-xs font-semibold text-green-400">
         {result.compressionRatio.toFixed(1)}% smaller
@@ -33,11 +40,4 @@
       <span class="text-xs font-semibold text-red-400">Failed</span>
     {/if}
   </div>
-  {#if result.success}
-    <p class="text-xs text-slate-400 mt-1">
-      {formatBytes(result.originalSize)} → {formatBytes(result.outputSize)}
-    </p>
-  {:else}
-    <p class="text-xs text-red-400 mt-1">{result.errorMessage}</p>
-  {/if}
 </div>

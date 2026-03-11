@@ -17,7 +17,7 @@
   }
 </script>
 
-<div class="p-2 rounded-xl bg-slate-900/50 border border-slate-800">
+<div class="p-2 rounded-xl bg-slate-900/50 border border-slate-800 flex flex-col min-h-0 h-full">
   <h3
     class="text-lg font-bold text-white mb-4 flex items-center justify-center gap-2"
   >
@@ -68,7 +68,7 @@
   </div>
 
   <!-- Results List -->
-  <div class="max-h-60 overflow-y-auto scrollbar-thin space-y-2">
+  <div class="flex-1 min-h-0 overflow-y-auto scrollbar-thin space-y-2">
     {#each results as result}
       <ResultCard {result} />
     {/each}

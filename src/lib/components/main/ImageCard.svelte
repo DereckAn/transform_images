@@ -42,7 +42,7 @@
       ✕
     </button>
   </div>
-  <div class="p-3">
+  <div class="p-3 absolute bottom-0 bg-slate-700/50">
     <div class="flex items-start justify-between gap-2 mb-2">
       <p class="text-xs font-semibold text-white truncate flex-1">
         {getFileName(image.path)}
@@ -53,7 +53,7 @@
         <span class="badge-standard text-xs">{image.format.toUpperCase()}</span>
       {/if}
     </div>
-    <div class="flex items-center gap-2 text-[10px] text-slate-400">
+    <div class="flex items-center gap-2 text-[10px] text-slate-200">
       <span>{image.width}×{image.height}</span>
       <span>•</span>
       <span class="text-nowrap">{formatBytes(image.sizeBytes)}</span>
