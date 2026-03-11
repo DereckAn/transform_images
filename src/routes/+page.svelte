@@ -5,6 +5,7 @@
   import Sidebar from "$lib/components/Sidebar.svelte";
   import Header from "$lib/components/header/Header.svelte";
   import type { ProcessedImage } from "$lib/models/types";
+  import { getVersion } from "@tauri-apps/api/app";
   import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
   import { open } from "@tauri-apps/plugin-dialog";
   import { relaunch } from "@tauri-apps/plugin-process";
@@ -40,6 +41,7 @@
   let rotation = 0;
   let flipHorizontal = false;
   let flipVertical = false;
+  let version = "";
 
   // Reactive computed
   $: canProcess = images.length > 0 && outputDirectory && !isProcessing;
@@ -57,44 +59,49 @@
           .reduce((sum, r) => sum + r.compressionRatio, 0) / successful
       : 0;
 
-  onMount(async () => {
+  onMount(() => {
     console.log("🚀 App mounted, setting up drag & drop listener...");
 
-    try {
-      const webview = getCurrentWebviewWindow();
+    let unlisten: (() => void) | undefined;
 
-      // Listener moderno de Tauri v2 para drag & drop
-      const unlisten = await webview.onDragDropEvent((event: any) => {
-        console.log("🎯 Drag drop event received:", event);
+    (async () => {
+      version = await getVersion();
+      try {
+        const webview = getCurrentWebviewWindow();
 
-        if (event.payload.type === "over") {
-          console.log("� User hovering over window", event.payload.position);
-        } else if (event.payload.type === "drop") {
-          console.log("📦 User dropped files:", event.payload.paths);
-          handleFileDrop(event.payload.paths);
-        } else if (event.payload.type === "cancel") {
-          console.log("❌ File drop cancelled");
-        }
-      });
-      console.log("✅ Drag & drop listener registered successfully");
+        // Listener moderno de Tauri v2 para drag & drop
+        const unlisten = await webview.onDragDropEvent((event: any) => {
+          console.log("🎯 Drag drop event received:", event);
 
-      imageService.onProgress((current, total, file, percentage) => {
-        progress = { current, total, currentFile: file, percentage };
-      });
+          if (event.payload.type === "over") {
+            console.log("� User hovering over window", event.payload.position);
+          } else if (event.payload.type === "drop") {
+            console.log("📦 User dropped files:", event.payload.paths);
+            handleFileDrop(event.payload.paths);
+          } else if (event.payload.type === "cancel") {
+            console.log("❌ File drop cancelled");
+          }
+        });
+        console.log("✅ Drag & drop listener registered successfully");
 
-      threadCount = await imageService.getOptimalThreads();
-      console.log("🧵 Optimal threads:", threadCount);
+        imageService.onProgress((current, total, file, percentage) => {
+          progress = { current, total, currentFile: file, percentage };
+        });
 
-      checkForUpdates();
+        threadCount = await imageService.getOptimalThreads();
+        console.log("🧵 Optimal threads:", threadCount);
 
-      // Cleanup
-      return () => {
-        console.log("🧹 Cleaning up drag & drop listener...");
-        unlisten();
-      };
-    } catch (error) {
-      console.error("❌ Error setting up listeners:", error);
-    }
+        checkForUpdates();
+
+        // Cleanup
+        return () => {
+          console.log("🧹 Cleaning up drag & drop listener...");
+          unlisten();
+        };
+      } catch (error) {
+        console.error("❌ Error setting up listeners:", error);
+      }
+    })();
   });
 
   async function checkForUpdates() {
@@ -221,7 +228,7 @@
       resizeWidth,
       resizeHeight,
       preserveAspectRatio,
-      resizeFilter
+      resizeFilter,
     );
     appState.setRotation(rotation);
     appState.setFlipHorizontal(flipHorizontal);
@@ -318,13 +325,17 @@
 
 <!-- Update Dialog -->
 {#if showUpdateDialog && pendingUpdate}
-  <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+  <div
+    class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+  >
     <div
       class="bg-slate-800 rounded-xl p-6 max-w-md w-full mx-4 border-2 border-blue-500/50 shadow-2xl"
     >
       <!-- Header with icon -->
       <div class="flex items-center gap-3 mb-4">
-        <div class="size-12 rounded-full bg-blue-600 flex items-center justify-center">
+        <div
+          class="size-12 rounded-full bg-blue-600 flex items-center justify-center"
+        >
           <span class="text-2xl">🎉</span>
         </div>
         <div class="flex-1">
@@ -340,9 +351,11 @@
         <p class="text-sm text-slate-300">
           A new version of Quak Images is ready to install.
         </p>
-        {#if pendingUpdate.body || pendingUpdate.notes}
-          <div class="max-h-32 overflow-y-auto bg-slate-900/50 rounded-lg p-3 text-xs text-slate-400">
-            {pendingUpdate.body || pendingUpdate.notes || "See release notes on GitHub"}
+        {#if pendingUpdate.body}
+          <div
+            class="max-h-32 overflow-y-auto bg-slate-900/50 rounded-lg p-3 text-xs text-slate-400"
+          >
+            {pendingUpdate.body || "See release notes on GitHub"}
           </div>
         {/if}
         <p class="text-xs text-slate-500 mt-2">
